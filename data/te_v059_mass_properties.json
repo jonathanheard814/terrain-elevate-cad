@@ -1,0 +1,65 @@
+{
+  "truth_boundary": "Screen-level mass properties for simulation import and mechanism debugging. Replace with weighed/procured part masses before design release.",
+  "links": {
+    "chassis": {
+      "mass_kg": 24.0,
+      "box_inertia_size_m": [1.20, 0.72, 0.45]
+    },
+    "occupant_pod": {
+      "mass_kg": 12.0,
+      "box_inertia_size_m": [0.48, 0.46, 0.42]
+    },
+    "front_left_slider": {
+      "mass_kg": 4.0,
+      "box_inertia_size_m": [0.14, 0.16, 0.46]
+    },
+    "front_right_slider": {
+      "mass_kg": 4.0,
+      "box_inertia_size_m": [0.14, 0.16, 0.46]
+    },
+    "rear_left_slider": {
+      "mass_kg": 4.0,
+      "box_inertia_size_m": [0.14, 0.16, 0.46]
+    },
+    "rear_right_slider": {
+      "mass_kg": 4.0,
+      "box_inertia_size_m": [0.14, 0.16, 0.46]
+    },
+    "front_left_wheel_module": {
+      "mass_kg": 7.0,
+      "box_inertia_size_m": [0.36, 0.20, 0.36]
+    },
+    "front_right_wheel_module": {
+      "mass_kg": 7.0,
+      "box_inertia_size_m": [0.36, 0.20, 0.36]
+    },
+    "rear_left_wheel_module": {
+      "mass_kg": 7.0,
+      "box_inertia_size_m": [0.36, 0.20, 0.36]
+    },
+    "rear_right_wheel_module": {
+      "mass_kg": 7.0,
+      "box_inertia_size_m": [0.36, 0.20, 0.36]
+    },
+    "front_left_wheel": {
+      "mass_kg": 2.0,
+      "cylinder_inertia_radius_m": 0.14,
+      "cylinder_inertia_length_m": 0.075
+    },
+    "front_right_wheel": {
+      "mass_kg": 2.0,
+      "cylinder_inertia_radius_m": 0.14,
+      "cylinder_inertia_length_m": 0.075
+    },
+    "rear_left_wheel": {
+      "mass_kg": 2.0,
+      "cylinder_inertia_radius_m": 0.14,
+      "cylinder_inertia_length_m": 0.075
+    },
+    "rear_right_wheel": {
+      "mass_kg": 2.0,
+      "cylinder_inertia_radius_m": 0.14,
+      "cylinder_inertia_length_m": 0.075
+    }
+  }
+}

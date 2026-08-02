@@ -7,10 +7,15 @@ on:
       - "scripts/build_occt_cad.py"
       - "scripts/analyze_vehicle_requirements.py"
       - "scripts/audit_assembly_connectivity.py"
+      - "scripts/export_simulation_package.py"
+      - "scripts/validate_simulation_package.py"
+      - "scripts/generate_matlab_package.py"
+      - "scripts/audit_design_acceptance.py"
       - "src/terrain_elevate/**"
       - "validate_outputs.py"
       - "data/te_v059_parameters.json"
       - "data/te_v059_load_cases.json"
+      - "data/te_v059_mass_properties.json"
       - "requirements-cad.txt"
       - ".github/workflows/build-native-cad.yml"
   push:
@@ -18,10 +23,15 @@ on:
       - "scripts/build_occt_cad.py"
       - "scripts/analyze_vehicle_requirements.py"
       - "scripts/audit_assembly_connectivity.py"
+      - "scripts/export_simulation_package.py"
+      - "scripts/validate_simulation_package.py"
+      - "scripts/generate_matlab_package.py"
+      - "scripts/audit_design_acceptance.py"
       - "src/terrain_elevate/**"
       - "validate_outputs.py"
       - "data/te_v059_parameters.json"
       - "data/te_v059_load_cases.json"
+      - "data/te_v059_mass_properties.json"
       - "requirements-cad.txt"
       - ".github/workflows/build-native-cad.yml"
 
@@ -47,12 +57,17 @@ jobs:
         run: |
           python scripts/analyze_vehicle_requirements.py
           python scripts/build_occt_cad.py
+          python scripts/export_simulation_package.py
+          python scripts/generate_matlab_package.py
 
       - name: Validate outputs
         run: |
           python validate_outputs.py
           python scripts/audit_assembly_connectivity.py
+          python scripts/validate_simulation_package.py
+          python scripts/audit_design_acceptance.py
           find cad_out -maxdepth 2 -type f -print
+          find sim_out -maxdepth 2 -type f -print
 
       - name: Upload Fusion-ready CAD files
         uses: actions/upload-artifact@v4
@@ -61,8 +76,16 @@ jobs:
           path: |
             cad_out/Terrain_Elevate_P1_V0_59_OCCT.step
             cad_out/Terrain_Elevate_P1_V0_59_OCCT.stl
+            cad_out/Terrain_Elevate_P1_V0_59_stair_climb_pose.step
+            cad_out/Terrain_Elevate_P1_V0_59_stair_climb_pose.stl
             cad_out/Terrain_Elevate_P1_V0_59_package.dxf
             cad_out/Terrain_Elevate_P1_V0_59_manifest.json
             analysis_out/Terrain_Elevate_P1_V0_59_requirements_screen.json
             analysis_out/Terrain_Elevate_P1_V0_59_connectivity_audit.json
+            analysis_out/Terrain_Elevate_P1_V0_59_design_acceptance_audit.json
+            sim_out/Terrain_Elevate_P1_V0_59_sim.urdf
+            sim_out/Terrain_Elevate_P1_V0_59_joint_graph.json
+            sim_out/load_terrain_elevate_matlab.m
+            sim_out/MATLAB_SOLIDWORKS_IMPORT_NOTES.json
+            sim_out/meshes/*.stl
           if-no-files-found: error

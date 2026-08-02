@@ -1,0 +1,21 @@
+{
+  "intent": "The build should accurately deliver a portable CAD plus simulation-ready stair-climbing prototype model, not merely a bundle of files.",
+  "result": "PASS",
+  "errors": [],
+  "checked_outputs": [
+    "detailed_793_body_step_for_solidworks",
+    "stair_climb_pose_step_showing_36_degree_chassis_and_level_pod_architecture",
+    "matlab_load_script",
+    "urdf_with_9_commanded_dof",
+    "cad_derived_link_meshes",
+    "connectivity_audit_zero_floating_parts",
+    "physics_requirement_screen"
+  ],
+  "truths_enforced": [
+    "Mobility chassis follows stair angle instead of staying flat.",
+    "Occupant pod has independent pitch-leveling joint.",
+    "Four corners remain independently actuated.",
+    "Wheel-only stair climbing traction is not claimed as passing.",
+    "Simulation model is simplified for dynamics but derived from detailed CAD geometry."
+  ]
+}

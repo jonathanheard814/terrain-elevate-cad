@@ -151,6 +151,11 @@ def _assembly_from_components(components: Iterable[Component]) -> cq.Assembly:
     return assembly
 
 
+def _rotated_y(component: Component, angle_deg: float, origin=(0.0, 0.0, 0.0), suffix: str = "") -> Component:
+    shape = component.shape.rotate(origin, (origin[0], origin[1] + 1.0, origin[2]), angle_deg)
+    return Component(component.name + suffix, component.role, component.callout, shape, component.material)
+
+
 def _category_for(component: Component) -> str:
     text = f"{component.name} {component.role}".lower()
     if any(token in text for token in ("bolt", "washer", "screw shank", "fastener")):
@@ -175,6 +180,22 @@ def _count_by(items: Iterable[str]) -> dict[str, int]:
     for item in items:
         counts[item] = counts.get(item, 0) + 1
     return dict(sorted(counts.items()))
+
+
+def _is_occupant_pod_leveling_group(component: Component) -> bool:
+    text = f"{component.name} {component.role}".lower()
+    return any(
+        token in text
+        for token in (
+            "seat_",
+            "pod",
+            "five_point",
+            "harness",
+            "mechanical_level_lock",
+            "electrak",
+            "leveling",
+        )
+    )
 
 
 def _add_chassis(components: list[Component], g: dict) -> None:
@@ -467,6 +488,30 @@ def build_components(params: dict, include_reference: bool = False) -> list[Comp
     return components
 
 
+def build_stair_climb_pose_components(params: dict) -> list[Component]:
+    """Return a visual kinematic pose: chassis pitched to stair angle, pod held level.
+
+    The normal shop assembly is kept as the primary audited build. This second
+    export makes the corrected vehicle architecture visible: the mobility
+    chassis follows the 36.03 degree staircase while the occupant pod remains
+    level relative to gravity.
+    """
+    g = params["geometry"]
+    pitch = -g["stair_angle_deg_CALC"]
+    pivot = (0.0, 0.0, 645.0)
+    posed: list[Component] = []
+    for component in build_components(params, include_reference=False):
+        if _is_occupant_pod_leveling_group(component):
+            posed.append(Component(component.name + "_level_pod_pose", component.role, component.callout, component.shape, component.material))
+        else:
+            posed.append(_rotated_y(component, pitch, pivot, "_pitched_chassis_pose"))
+
+    # Reference stair blocks are kept unrotated so the pitched chassis can be
+    # inspected against the actual rise/run target.
+    _add_reference_geometry(posed, g)
+    return posed
+
+
 def _compound(components: Iterable[Component]) -> cq.Compound:
     return cq.Compound.makeCompound([component.shape.val() for component in components])
 
@@ -541,12 +586,18 @@ def export_model(params: dict, out_dir: Path) -> dict:
 
     step_path = out_dir / "Terrain_Elevate_P1_V0_59_OCCT.step"
     stl_path = out_dir / "Terrain_Elevate_P1_V0_59_OCCT.stl"
+    pose_step_path = out_dir / "Terrain_Elevate_P1_V0_59_stair_climb_pose.step"
+    pose_stl_path = out_dir / "Terrain_Elevate_P1_V0_59_stair_climb_pose.stl"
     dxf_path = out_dir / "Terrain_Elevate_P1_V0_59_package.dxf"
     manifest_path = out_dir / "Terrain_Elevate_P1_V0_59_manifest.json"
 
     step_assembly = _assembly_from_components(components)
     step_assembly.save(str(step_path), exportType="STEP")
     exporters.export(compound, str(stl_path), exportType="STL", tolerance=0.25, angularTolerance=0.2)
+    pose_components = build_stair_climb_pose_components(params)
+    pose_assembly = _assembly_from_components(pose_components)
+    pose_assembly.save(str(pose_step_path), exportType="STEP")
+    exporters.export(_compound(pose_components), str(pose_stl_path), exportType="STL", tolerance=0.25, angularTolerance=0.2)
     export_dxf(dxf_path, params["geometry"])
 
     imported = importers.importStep(str(step_path))
@@ -560,13 +611,22 @@ def export_model(params: dict, out_dir: Path) -> dict:
         "outputs": {
             "step_file": step_path.name,
             "stl_file": stl_path.name,
+            "stair_climb_pose_step_file": pose_step_path.name,
+            "stair_climb_pose_stl_file": pose_stl_path.name,
             "dxf_file": dxf_path.name,
             "manifest_file": manifest_path.name,
         },
         "output_bytes": {
             "step": step_path.stat().st_size,
             "stl": stl_path.stat().st_size,
+            "stair_climb_pose_step": pose_step_path.stat().st_size,
+            "stair_climb_pose_stl": pose_stl_path.stat().st_size,
             "dxf": dxf_path.stat().st_size,
+        },
+        "pose_exports": {
+            "shop_assembly": "Primary connected and audited assembly in neutral/shop pose.",
+            "stair_climb_pose": "Kinematic visual pose: chassis rotated to the 36.03 degree stair angle about the occupant roll/pitch reference region while pod components remain level; reference stair geometry included.",
+            "stair_angle_deg": params["geometry"]["stair_angle_deg_CALC"],
         },
         "locked_constraints": params["locked_constraints"],
         "geometry": params["geometry"],

@@ -1,0 +1,65 @@
+{
+  "truth_boundary": "Engineering sizing screen for CAD completeness. Not certification, FEA, dynamic contact simulation, or physical validation.",
+  "stair_geometry": {
+    "rise_mm": 203.2,
+    "going_mm": 279.4,
+    "calculated_stair_angle_deg": 36.02737338510361,
+    "wheelbase_height_difference_on_smooth_slope_mm": 423.48362232603324
+  },
+  "suspension_stroke": {
+    "required_corner_stroke_mm": 238.2,
+    "selected_corner_stroke_mm": 300.0,
+    "stroke_margin_mm": 61.80000000000001,
+    "result": "PASS"
+  },
+  "corner_actuator_screen": {
+    "design_screen_mass_kg": 100.0,
+    "static_corner_force_N": 367.749375,
+    "one_corner_dynamic_force_N": 1323.8977499999999,
+    "two_corner_dynamic_force_each_N": 1029.69825,
+    "governing_corner_force_N": 1323.8977499999999,
+    "screened_screw_axial_capacity_N": 2511.4677070960206,
+    "capacity_margin_N": 1187.5699570960207,
+    "linear_speed_mm_s": 21.777777777777782,
+    "full_300mm_stroke_time_s": 13.77551020408163,
+    "holding_brake_torque_required_Nm_with_sf": 2.9746570032104227,
+    "selected_ab60s_holding_brake_torque_Nm": 5.0,
+    "selected_brake_margin_Nm": 2.0253429967895773,
+    "result": "PASS_FOR_SCREENING"
+  },
+  "wheel_propulsion_screen": {
+    "slope_climb_force_N": 769.0658638673322,
+    "per_wheel_climb_torque_Nm_with_sf": 53.83461047071326,
+    "traction_limited_force_N_at_assumed_mu": 515.5144618735711,
+    "traction_margin_N": -253.55140199376103,
+    "result": "FAIL_TRACTION_SCREEN"
+  },
+  "pod_pitch_leveling_screen": {
+    "required_pitch_correction_deg": 36.03,
+    "screened_pod_child_cargo_mass_kg": 35.0,
+    "assumed_cg_offset_mm": 150.0,
+    "assumed_actuator_moment_arm_mm": 150.0,
+    "actuator_count": 2,
+    "calculated_pitch_hold_torque_Nm": 51.48491249999999,
+    "required_force_per_actuator_N_with_sf": 514.849125,
+    "selected_actuator_family": "Thomson Electrak MD MDxxA200",
+    "selected_actuator_dynamic_load_N": 2000.0,
+    "selected_actuator_force_margin_N": 1485.150875,
+    "selected_actuator_max_stroke_mm": 300.0,
+    "result": "PASS_FOR_SCREENING"
+  },
+  "selected_electrical_protection_and_interconnect": {
+    "power_connector_family": "TE DEUTSCH DTP",
+    "power_connector_contact_rating_A": 25,
+    "signal_connector_family": "TE DEUTSCH DT",
+    "signal_connector_contact_rating_A": 13,
+    "branch_fuse_holder": "Littelfuse MIDI 498",
+    "branch_fuse_holder_continuous_rating_A": 150,
+    "branch_fuse_holder_voltage_rating_V": 58
+  },
+  "required_verifications_before_release": [
+    "Wheel propulsion torque-speed curve must be verified against selected BG75/PLG75-class drive variant",
+    "Exact battery/BMS current and regen acceptance selected from propulsion and actuator power profile",
+    "Structural joint preload and torque values must be finalized with production material stackups"
+  ]
+}

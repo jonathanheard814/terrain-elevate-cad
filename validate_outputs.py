@@ -20,12 +20,19 @@ for p in [manifest_path, step, stl, dxf]:
 
 if manifest_path.exists():
     m = json.loads(manifest_path.read_text())
-    if m.get("component_count", 0) < 120:
-        errors.append(f"Expected at least 120 components, got {m.get('component_count')}")
+    if m.get("component_count", 0) < 540:
+        errors.append(f"Expected at least 540 connected/sourced assembly components, got {m.get('component_count')}")
     if not m.get("reimported_step_bounding_box_mm"):
         errors.append("Missing reimported STEP bounding box")
     if m.get("locked_constraints", {}).get("main_ground_contact_wheels") != 4:
         errors.append("Prototype must have exactly four ground-contact wheels")
+    sourced = json.dumps(m.get("sourced_parts", [])).lower()
+    for required_part in ("bnk1404", "hsr15", "ab 60", "electrak md", "deutsch dtp", "midi 498", "iglidur g"):
+        if required_part not in sourced:
+            errors.append(f"Required sourced part missing from manifest: {required_part}")
+    ebom = m.get("ebom_summary", {})
+    if not ebom.get("by_material") or not ebom.get("by_subsystem"):
+        errors.append("Manifest must include material and subsystem EBOM summaries")
     forbidden = ("extra helper wheel", "belt drive", "crawler track", "anti tip roller", "anti-tip roller")
     generated_text = json.dumps(m.get("components", [])).lower()
     for phrase in forbidden:

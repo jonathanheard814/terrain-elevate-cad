@@ -1,7 +1,8 @@
 from __future__ import annotations
 
-from dataclasses import dataclass, asdict
+from dataclasses import dataclass
 import json
+import math
 from pathlib import Path
 from typing import Iterable
 
@@ -16,18 +17,63 @@ class Component:
     role: str
     callout: str
     shape: cq.Workplane
+    material: str = "aluminum"
+
+
+MATERIAL_COLORS = {
+    "aluminum": cq.Color(0.72, 0.72, 0.70, 1.0),
+    "dark_aluminum": cq.Color(0.28, 0.30, 0.32, 1.0),
+    "steel": cq.Color(0.58, 0.60, 0.62, 1.0),
+    "black_oxide_steel": cq.Color(0.06, 0.06, 0.065, 1.0),
+    "rubber": cq.Color(0.015, 0.015, 0.018, 1.0),
+    "plastic": cq.Color(0.10, 0.12, 0.16, 1.0),
+    "electronics": cq.Color(0.04, 0.22, 0.13, 1.0),
+    "copper": cq.Color(0.76, 0.36, 0.16, 1.0),
+    "seat_shell": cq.Color(0.18, 0.22, 0.28, 1.0),
+    "reference": cq.Color(0.68, 0.62, 0.50, 0.45),
+}
+
+
+def _infer_material(name: str, role: str, callout: str, material: str | None = None) -> str:
+    if material:
+        return material
+    text = f"{name} {role} {callout}".lower()
+    if "tire" in text:
+        return "rubber"
+    if any(token in text for token in ("bolt", "washer", "screw", "shaft", "pin", "rack", "pawl", "bearing", "rail")):
+        return "steel"
+    if any(token in text for token in ("motor", "gearhead", "brake", "ecu", "bms", "battery", "sensor", "lidar", "imu", "inverter")):
+        return "electronics"
+    if any(token in text for token in ("seat", "pod", "retainer", "shell", "paddle")):
+        return "seat_shell"
+    if "ref_" in name or callout == "REQ":
+        return "reference"
+    if "hub" in text or "tube" in text:
+        return "dark_aluminum"
+    return "aluminum"
 
 
 def load_parameters(path: Path) -> dict:
     return json.loads(path.read_text())
 
 
-def _box(name: str, role: str, callout: str, center, size) -> Component:
+def _box(name: str, role: str, callout: str, center, size, material: str | None = None) -> Component:
     solid = cq.Workplane("XY").box(*size).translate(center)
-    return Component(name, role, callout, solid)
+    return Component(name, role, callout, solid, _infer_material(name, role, callout, material))
 
 
-def _cylinder(name: str, role: str, callout: str, center, radius: float, length: float, axis: str) -> Component:
+def _soft_box(name: str, role: str, callout: str, center, size, radius: float = 8.0, rotate_y: float = 0.0, material: str | None = None) -> Component:
+    solid = cq.Workplane("XY").box(*size)
+    try:
+        solid = solid.edges().fillet(radius)
+    except Exception:
+        pass
+    if rotate_y:
+        solid = solid.rotate((0, 0, 0), (0, 1, 0), rotate_y)
+    return Component(name, role, callout, solid.translate(center), _infer_material(name, role, callout, material))
+
+
+def _cylinder(name: str, role: str, callout: str, center, radius: float, length: float, axis: str, material: str | None = None) -> Component:
     solid = cq.Workplane("XY").cylinder(length, radius)
     if axis == "X":
         solid = solid.rotate((0, 0, 0), (0, 1, 0), 90)
@@ -35,10 +81,10 @@ def _cylinder(name: str, role: str, callout: str, center, radius: float, length:
         solid = solid.rotate((0, 0, 0), (1, 0, 0), 90)
     elif axis != "Z":
         raise ValueError(f"Unsupported cylinder axis {axis!r}")
-    return Component(name, role, callout, solid.translate(center))
+    return Component(name, role, callout, solid.translate(center), _infer_material(name, role, callout, material))
 
 
-def _tube(name: str, role: str, callout: str, center, outer_radius: float, inner_radius: float, length: float, axis: str) -> Component:
+def _tube(name: str, role: str, callout: str, center, outer_radius: float, inner_radius: float, length: float, axis: str, material: str | None = None) -> Component:
     solid = cq.Workplane("XY").cylinder(length, outer_radius).cut(cq.Workplane("XY").cylinder(length + 2, inner_radius))
     if axis == "X":
         solid = solid.rotate((0, 0, 0), (0, 1, 0), 90)
@@ -46,17 +92,89 @@ def _tube(name: str, role: str, callout: str, center, outer_radius: float, inner
         solid = solid.rotate((0, 0, 0), (1, 0, 0), 90)
     elif axis != "Z":
         raise ValueError(f"Unsupported tube axis {axis!r}")
-    return Component(name, role, callout, solid.translate(center))
+    return Component(name, role, callout, solid.translate(center), _infer_material(name, role, callout, material))
 
 
-def _gusset(name: str, role: str, callout: str, center, length: float, height: float, thickness: float, flip_x: int) -> Component:
+def _gusset(name: str, role: str, callout: str, center, length: float, height: float, thickness: float, flip_x: int, material: str | None = None) -> Component:
     points = [
         (-length / 2, -height / 2),
         (length / 2, -height / 2),
         (length / 2 * flip_x, height / 2),
     ]
     solid = cq.Workplane("XZ").polyline(points).close().extrude(thickness, both=True).translate(center)
-    return Component(name, role, callout, solid)
+    return Component(name, role, callout, solid, _infer_material(name, role, callout, material))
+
+
+def _rod_xz(name: str, role: str, callout: str, start, end, radius: float, material: str | None = "steel") -> Component:
+    sx, sy, sz = start
+    ex, ey, ez = end
+    dx = ex - sx
+    dz = ez - sz
+    length = (dx * dx + dz * dz) ** 0.5
+    angle_y = 90.0 - math.degrees(math.atan2(dz, dx))
+    center = ((sx + ex) / 2, (sy + ey) / 2, (sz + ez) / 2)
+    solid = cq.Workplane("XY").cylinder(length, radius).rotate((0, 0, 0), (0, 1, 0), angle_y).translate(center)
+    return Component(name, role, callout, solid, _infer_material(name, role, callout, material))
+
+
+def _bolt_y(prefix: str, center, grip: float, diameter: float = 8.0) -> list[Component]:
+    cx, cy, cz = center
+    shank_r = diameter / 2
+    head_r = diameter * 0.8125
+    head_len = diameter
+    washer_r = diameter * 0.95
+    return [
+        _cylinder(prefix + "_shank", "socket-head cap screw shank", "FASTENER", center, shank_r, grip, "Y", "black_oxide_steel"),
+        _cylinder(prefix + "_head", "ISO 4762 socket-head cap screw head", "FASTENER", (cx, cy + grip / 2 + head_len / 2, cz), head_r, head_len, "Y", "black_oxide_steel"),
+        _cylinder(prefix + "_washer", "flat washer", "FASTENER", (cx, cy - grip / 2 - 1.0, cz), washer_r, 2.0, "Y", "steel"),
+    ]
+
+
+def _bolt_x(prefix: str, center, grip: float, diameter: float = 8.0) -> list[Component]:
+    cx, cy, cz = center
+    shank_r = diameter / 2
+    head_r = diameter * 0.8125
+    head_len = diameter
+    washer_r = diameter * 0.95
+    return [
+        _cylinder(prefix + "_shank", "socket-head cap screw shank", "FASTENER", center, shank_r, grip, "X", "black_oxide_steel"),
+        _cylinder(prefix + "_head", "ISO 4762 socket-head cap screw head", "FASTENER", (cx + grip / 2 + head_len / 2, cy, cz), head_r, head_len, "X", "black_oxide_steel"),
+        _cylinder(prefix + "_washer", "flat washer", "FASTENER", (cx - grip / 2 - 1.0, cy, cz), washer_r, 2.0, "X", "steel"),
+    ]
+
+
+def _assembly_from_components(components: Iterable[Component]) -> cq.Assembly:
+    assembly = cq.Assembly(name="Terrain_Elevate_P1_V0_59")
+    for component in components:
+        color = MATERIAL_COLORS.get(component.material, MATERIAL_COLORS["aluminum"])
+        assembly.add(component.shape, name=component.name, color=color)
+    return assembly
+
+
+def _category_for(component: Component) -> str:
+    text = f"{component.name} {component.role}".lower()
+    if any(token in text for token in ("bolt", "washer", "screw shank", "fastener")):
+        return "fastener"
+    if any(token in text for token in ("seat", "pod", "five_point", "leveling")):
+        return "occupant_pod"
+    if any(token in text for token in ("harness", "connector", "bus", "cable", "inhibit", "watchdog")):
+        return "electrical_interconnect"
+    if any(token in text for token in ("tire", "wheel", "hub", "axle", "brake", "motor")):
+        return "wheel_drive"
+    if any(token in text for token in ("guide", "ball_screw", "stroke", "carriage", "slider", "tower", "swingarm", "link", "clevis", "pawl", "rack")):
+        return "suspension_corner"
+    if any(token in text for token in ("battery", "ecu", "bms", "inverter", "sensor", "lidar", "imu")):
+        return "controls_power_sensing"
+    if "ref_" in component.name:
+        return "reference"
+    return "structure"
+
+
+def _count_by(items: Iterable[str]) -> dict[str, int]:
+    counts: dict[str, int] = {}
+    for item in items:
+        counts[item] = counts.get(item, 0) + 1
+    return dict(sorted(counts.items()))
 
 
 def _add_chassis(components: list[Component], g: dict) -> None:
@@ -72,13 +190,25 @@ def _add_chassis(components: list[Component], g: dict) -> None:
             _tube("right_lower_frame_rail", "6061 rectangular tube main side rail", "1-12", (0, -outer_y, z), 26, 19, rail_len, "X"),
             _tube("front_crossmember", "front torsion crossmember", "1-12", (wb / 2 + 55, 0, z), 28, 20, tr + 210, "Y"),
             _tube("rear_crossmember", "rear torsion crossmember", "1-12", (-wb / 2 - 55, 0, z), 28, 20, tr + 210, "Y"),
-            _box("battery_tray_pan", "low mounted battery tray between rails", "41-59", (-45, 0, z - 55), (360, 220, 28)),
-            _box("front_sensor_bridge", "front lidar and edge sensor mounting bridge", "67", (wb / 2 + 80, 0, z + 175), (34, 580, 42)),
-            _box("rear_sensor_bridge", "rear lidar and edge sensor mounting bridge", "67", (-wb / 2 - 80, 0, z + 175), (34, 580, 42)),
+            _soft_box("battery_tray_pan", "low mounted battery tray between rails", "41-59", (-45, 0, z - 55), (360, 220, 28), 6),
+            _soft_box("front_sensor_bridge", "front lidar and edge sensor mounting bridge", "67", (wb / 2 + 80, 0, z + 175), (34, 580, 42), 6),
+            _soft_box("rear_sensor_bridge", "rear lidar and edge sensor mounting bridge", "67", (-wb / 2 - 80, 0, z + 175), (34, 580, 42), 6),
             _cylinder("fold_hinge_axis_left", "folding handle and chassis hinge datum", "1-12", (-120, outer_y, z + 80), 16, 145, "Y"),
             _cylinder("fold_hinge_axis_right", "folding handle and chassis hinge datum", "1-12", (-120, -outer_y, z + 80), 16, 145, "Y"),
+            _soft_box("handle_left_lower_hinge_bracket", "bolted handle hinge bracket tied into left rail", "31-36", (-540, outer_y, z + 95), (120, 42, 84), 6, material="steel"),
+            _soft_box("handle_right_lower_hinge_bracket", "bolted handle hinge bracket tied into right rail", "31-36", (-540, -outer_y, z + 95), (120, 42, 84), 6, material="steel"),
+            _soft_box("seat_left_roll_trunnion_stand", "seat roll trunnion stand tied to left chassis rail", "13-26", (0, 265, z + 165), (86, 58, 260), 7, material="steel"),
+            _soft_box("seat_right_roll_trunnion_stand", "seat roll trunnion stand tied to right chassis rail", "13-26", (0, -265, z + 165), (86, 58, 260), 7, material="steel"),
+            _soft_box("battery_front_hold_down_strap", "battery hold-down strap bolted to tray", "41-59", (75, 0, z + 15), (18, 250, 20), 4, material="steel"),
+            _soft_box("battery_rear_hold_down_strap", "battery hold-down strap bolted to tray", "41-59", (-215, 0, z + 15), (18, 250, 20), 4, material="steel"),
         ]
     )
+    for i, y_side in enumerate((outer_y, -outer_y)):
+        components.extend(_bolt_y(f"handle_hinge_m8_{i}_front", (-560, y_side, z + 95), 86))
+        components.extend(_bolt_y(f"handle_hinge_m8_{i}_rear", (-520, y_side, z + 95), 86))
+    for i, y_side in enumerate((265, -265)):
+        components.extend(_bolt_y(f"seat_trunnion_stand_m8_{i}_front", (-28, y_side, z + 80), 72))
+        components.extend(_bolt_y(f"seat_trunnion_stand_m8_{i}_rear", (28, y_side, z + 80), 72))
 
 
 def _add_seat_pod(components: list[Component]) -> None:
@@ -88,31 +218,56 @@ def _add_seat_pod(components: list[Component]) -> None:
             _tube("seat_roll_outer_rear", "roll leveling outer frame tube", "13-26", (-190, 0, 645), 22, 15, 470, "Y"),
             _tube("seat_roll_outer_left", "roll leveling outer frame side tube", "13-26", (0, 230, 645), 22, 15, 420, "X"),
             _tube("seat_roll_outer_right", "roll leveling outer frame side tube", "13-26", (0, -230, 645), 22, 15, 420, "X"),
-            _box("seat_pan_shell", "child seat pan envelope with reclined base", "13-26", (30, 0, 725), (390, 330, 52)),
-            _box("seat_back_shell", "child back support envelope", "13-26", (-165, 0, 850), (72, 390, 320)),
-            _box("seat_left_side_retainer", "child side retention wall", "13-26", (25, 198, 835), (360, 38, 215)),
-            _box("seat_right_side_retainer", "child side retention wall", "13-26", (25, -198, 835), (360, 38, 215)),
+            _soft_box("seat_pan_shell", "rounded child seat pan envelope with reclined base", "13-26", (30, 0, 725), (390, 330, 52), 18, -6),
+            _soft_box("seat_back_shell", "rounded child back support envelope", "13-26", (-165, 0, 850), (72, 390, 320), 20, -10),
+            _soft_box("seat_left_side_retainer", "rounded child side retention wall", "13-26", (25, 198, 835), (360, 38, 215), 14, -6),
+            _soft_box("seat_right_side_retainer", "rounded child side retention wall", "13-26", (25, -198, 835), (360, 38, 215), 14, -6),
             _cylinder("seat_roll_bearing_left", "seat roll bearing envelope", "13-26", (0, 276, 645), 27, 56, "Y"),
             _cylinder("seat_roll_bearing_right", "seat roll bearing envelope", "13-26", (0, -276, 645), 27, 56, "Y"),
+            _cylinder("seat_roll_cross_shaft", "continuous roll shaft tying pod into chassis trunnions", "13-26", (0, 0, 645), 12.5, 610, "Y", "steel"),
             _cylinder("seat_pitch_bearing_front", "seat pitch bearing envelope", "13-26", (222, 0, 710), 22, 68, "X"),
             _cylinder("seat_pitch_bearing_rear", "seat pitch bearing envelope", "13-26", (-222, 0, 710), 22, 68, "X"),
-            _box("mechanical_level_lock", "no power positive seat leveling lock", "13-26", (-240, 0, 665), (120, 70, 44)),
-            _box("five_point_harness_bar", "harness anchor crossbar", "13-26", (75, 0, 845), (255, 30, 34)),
+            _cylinder("seat_left_electrak_md_body", "left Thomson Electrak MD pod pitch actuator body", "13-26", (-150, 150, 610), 34, 118, "X", "dark_aluminum"),
+            _cylinder("seat_right_electrak_md_body", "right Thomson Electrak MD pod pitch actuator body", "13-26", (-150, -150, 610), 34, 118, "X", "dark_aluminum"),
+            _rod_xz("seat_leveling_actuator_left_extension_tube", "left Electrak MD stainless extension tube between chassis and pod", "13-26", (-180, 150, 565), (-80, 150, 760), 12, "steel"),
+            _rod_xz("seat_leveling_actuator_right_extension_tube", "right Electrak MD stainless extension tube between chassis and pod", "13-26", (-180, -150, 565), (-80, -150, 760), 12, "steel"),
+            _cylinder("seat_left_leveling_clevis_lower_pin", "left pod leveling lower clevis pin", "13-26", (-180, 150, 565), 7, 70, "Y", "steel"),
+            _cylinder("seat_left_leveling_clevis_upper_pin", "left pod leveling upper clevis pin", "13-26", (-80, 150, 760), 7, 70, "Y", "steel"),
+            _cylinder("seat_right_leveling_clevis_lower_pin", "right pod leveling lower clevis pin", "13-26", (-180, -150, 565), 7, 70, "Y", "steel"),
+            _cylinder("seat_right_leveling_clevis_upper_pin", "right pod leveling upper clevis pin", "13-26", (-80, -150, 760), 7, 70, "Y", "steel"),
+            _soft_box("seat_pitch_stop_front", "front mechanical pod pitch stop", "13-26", (255, 0, 662), (42, 370, 34), 5, material="steel"),
+            _soft_box("seat_pitch_stop_rear", "rear mechanical pod pitch stop", "13-26", (-255, 0, 662), (42, 370, 34), 5, material="steel"),
+            _soft_box("mechanical_level_lock", "no power positive seat leveling lock", "13-26", (-240, 0, 665), (120, 70, 44), 6),
+            _soft_box("five_point_harness_bar", "harness anchor crossbar", "13-26", (75, 0, 845), (255, 30, 34), 6),
         ]
     )
+    for i, y_side in enumerate((276, -276)):
+        components.extend(_bolt_y(f"seat_roll_bearing_retainer_m6_{i}_a", (-18, y_side, 645), 68, 6))
+        components.extend(_bolt_y(f"seat_roll_bearing_retainer_m6_{i}_b", (18, y_side, 645), 68, 6))
 
 
 def _add_controls(components: list[Component]) -> None:
     components.extend(
         [
-            _box("battery_pack_48v", "48 V battery envelope", "41-59", (-70, 0, 430), (310, 165, 118)),
-            _box("bms_fuse_contactor", "BMS fuse contactor and service disconnect", "41-59", (175, 0, 430), (220, 112, 54)),
-            _box("safety_supervisor_ecu", "independent safety supervisor ECU", "68", (45, 220, 530), (140, 100, 42)),
-            _box("motor_control_ecu", "motor control electronics bank", "68", (45, -220, 530), (145, 108, 58)),
-            _box("left_inverter_bank", "left branch inverter package", "69", (-230, 185, 500), (150, 82, 46)),
-            _box("right_inverter_bank", "right branch inverter package", "69", (-230, -185, 500), (150, 82, 46)),
+            _soft_box("battery_pack_48v", "48 V battery envelope", "41-59", (-70, 0, 430), (310, 165, 118), 10),
+            _soft_box("bms_fuse_contactor", "BMS fuse contactor and service disconnect", "41-59", (175, 0, 430), (220, 112, 54), 8),
+            _soft_box("safety_supervisor_ecu", "independent safety supervisor ECU", "68", (45, 220, 530), (140, 100, 42), 6),
+            _soft_box("motor_control_ecu", "motor control electronics bank", "68", (45, -220, 530), (145, 108, 58), 6),
+            _soft_box("left_inverter_bank", "left branch inverter package", "69", (-230, 185, 500), (150, 82, 46), 6),
+            _soft_box("right_inverter_bank", "right branch inverter package", "69", (-230, -185, 500), (150, 82, 46), 6),
+            _soft_box("hardwired_inhibit_relay_module", "hardwired gate-enable inhibit relay module", "68", (210, 145, 500), (90, 62, 36), 5, material="electronics"),
+            _soft_box("external_watchdog_module", "independent external watchdog module", "68", (210, -145, 500), (90, 62, 36), 5, material="electronics"),
+            _soft_box("left_littelfuse_midi498_fuse_block", "Littelfuse MIDI 498 left branch fuse holder", "69", (-55, 240, 462), (115, 44, 34), 5, material="electronics"),
+            _soft_box("right_littelfuse_midi498_fuse_block", "Littelfuse MIDI 498 right branch fuse holder", "69", (-55, -240, 462), (115, 44, 34), 5, material="electronics"),
+            _cylinder("positive_dc_bus_bar", "48 V positive copper bus bar", "41-59", (0, 72, 488), 4, 390, "X", "copper"),
+            _cylinder("negative_dc_bus_bar", "48 V negative copper bus bar", "41-59", (0, -72, 488), 4, 390, "X", "copper"),
+            _cylinder("safety_inhibit_harness_left", "hardwired inhibit harness to left drive branch", "68", (-120, 210, 545), 5, 260, "X", "plastic"),
+            _cylinder("safety_inhibit_harness_right", "hardwired inhibit harness to right drive branch", "68", (-120, -210, 545), 5, 260, "X", "plastic"),
         ]
     )
+    for i, y_side in enumerate((185, -185, 240, -240)):
+        components.extend(_bolt_y(f"electronics_mount_m5_{i}_a", (-280, y_side, 528), 38, 5))
+        components.extend(_bolt_y(f"electronics_mount_m5_{i}_b", (-180, y_side, 528), 38, 5))
 
 
 def _add_handle_and_sensors(components: list[Component], g: dict) -> None:
@@ -122,10 +277,14 @@ def _add_handle_and_sensors(components: list[Component], g: dict) -> None:
             _tube("handle_left_upright", "folding handle upright tube", "31-36", (-550, 285, 855), 17, 11, 610, "Z"),
             _tube("handle_right_upright", "folding handle upright tube", "31-36", (-550, -285, 855), 17, 11, 610, "Z"),
             _tube("handle_grip_deadman_bar", "operator grip with deadman release", "31-36", (-550, 0, 1160), 20, 13, 620, "Y"),
-            _box("deadman_release_paddle", "deadman release paddle", "31-36", (-505, 0, 1210), (120, 14, 58)),
-            _box("front_depth_lidar", "front stair depth sensor", "67", (wb / 2 + 190, 0, 675), (126, 56, 50)),
-            _box("rear_depth_lidar", "rear stair depth sensor", "67", (-wb / 2 - 190, 0, 675), (126, 56, 50)),
-            _box("dual_imu_mount", "redundant attitude sensor mount", "67", (0, 0, 586), (72, 44, 24)),
+            _soft_box("deadman_release_paddle", "deadman release paddle", "31-36", (-505, 0, 1210), (120, 14, 58), 5),
+            _soft_box("front_depth_lidar", "front stair depth sensor", "67", (wb / 2 + 190, 0, 675), (126, 56, 50), 6),
+            _soft_box("rear_depth_lidar", "rear stair depth sensor", "67", (-wb / 2 - 190, 0, 675), (126, 56, 50), 6),
+            _soft_box("dual_imu_mount", "redundant attitude sensor mount", "67", (0, 0, 586), (72, 44, 24), 5),
+            _soft_box("front_sensor_connector_block", "sealed front sensor connector block", "67", (wb / 2 + 105, 90, 624), (58, 38, 28), 4, material="plastic"),
+            _soft_box("rear_sensor_connector_block", "sealed rear sensor connector block", "67", (-wb / 2 - 105, -90, 624), (58, 38, 28), 4, material="plastic"),
+            _cylinder("front_sensor_harness_conduit", "front sensor harness conduit", "67", (wb / 2 + 35, 0, 622), 6, 250, "Y", "plastic"),
+            _cylinder("rear_sensor_harness_conduit", "rear sensor harness conduit", "67", (-wb / 2 - 35, 0, 622), 6, 250, "Y", "plastic"),
         ]
     )
 
@@ -139,6 +298,9 @@ def _add_corner(components: list[Component], g: dict, code: str, sx: int, sy: in
     y = sy * tr / 2
     z_axle = wheel_d / 2
     tower_x = x - sx * 100
+    rail_y = sy * (tr / 2 + 55)
+    selected_stroke = g.get("corner_stroke_selected_mm_SRC", 300.0)
+    screw_len = g.get("ball_screw_shaft_length_mm_SRC", 430.0)
     side = "front" if sx > 0 else "rear"
     lr = "left" if sy > 0 else "right"
     prefix = f"{code.lower()}_"
@@ -148,31 +310,63 @@ def _add_corner(components: list[Component], g: dict, code: str, sx: int, sy: in
             _tube(prefix + "tire_280x75", f"{side} {lr} pneumatic tire envelope", "60", (x, y, z_axle), wheel_d / 2, wheel_d / 2 - 24, wheel_w, "Y"),
             _tube(prefix + "hub_shell", f"{side} {lr} wheel hub shell", "60", (x, y, z_axle), 64, 22, wheel_w + 24, "Y"),
             _cylinder(prefix + "live_axle", f"{side} {lr} live axle", "60", (x, y, z_axle), 8.5, 138, "Y"),
-            _box(prefix + "fork_outer_plate", f"{side} {lr} fork outer plate", "60", (x, y + sy * 58, z_axle + 126), (118, 16, 205)),
-            _box(prefix + "fork_inner_plate", f"{side} {lr} fork inner plate", "60", (x, y - sy * 58, z_axle + 126), (118, 16, 205)),
-            _box(prefix + "fork_bridge", f"{side} {lr} fork bridge", "60", (x, y, z_axle + 230), (132, 132, 34)),
+            _soft_box(prefix + "fork_outer_plate", f"{side} {lr} fork outer plate", "60", (x, y + sy * 58, z_axle + 126), (118, 16, 205), 5),
+            _soft_box(prefix + "fork_inner_plate", f"{side} {lr} fork inner plate", "60", (x, y - sy * 58, z_axle + 126), (118, 16, 205), 5),
+            _soft_box(prefix + "fork_bridge", f"{side} {lr} fork bridge", "60", (x, y, z_axle + 230), (132, 132, 34), 5),
+            _soft_box(prefix + "tower_lower_frame_lug", f"{side} {lr} bolted lower tower-to-frame lug", "61", (tower_x, rail_y, 370), (120, 36, 70), 5),
+            _soft_box(prefix + "tower_upper_frame_lug", f"{side} {lr} bolted upper tower-to-frame lug", "61", (tower_x, rail_y, 610), (120, 36, 70), 5),
+            _soft_box(prefix + "tower_top_thrust_block", f"{side} {lr} ball-screw top thrust bearing block", "62", (tower_x, y, 725), (96, 96, 42), 6, material="steel"),
+            _soft_box(prefix + "tower_bottom_thrust_block", f"{side} {lr} ball-screw lower support bearing block", "62", (tower_x, y, 300), (96, 96, 42), 6, material="steel"),
             _cylinder(prefix + "steer_kingpin_bearing", f"{side} {lr} steering kingpin bearing stack", "60", (x, y, 445), 22, 270, "Z"),
-            _box(prefix + "steer_center_lock", f"{side} {lr} steering positive center lock", "66", (x, y, 590), (92, 68, 34)),
-            _box(prefix + "suspension_tower_cassette", f"{side} {lr} vertical suspension cassette", "61", (tower_x, y, 510), (92, 82, 430)),
-            _cylinder(prefix + "swingarm_pivot_25mm", f"{side} {lr} 25 mm swingarm pivot shaft", "60", (x - sx * 108, y, 314), g["pivot_diameter_mm_OPEN"] / 2, 176, "Y"),
-            _box(prefix + "boxed_lower_swingarm", f"{side} {lr} boxed lower swing arm", "60", (x - sx * 72, y, 312), (238, 42, 36)),
-            _box(prefix + "upper_reaction_link", f"{side} {lr} upper reaction link", "60", (x - sx * 70, y, 455), (210, 32, 30)),
+            _soft_box(prefix + "steer_center_lock", f"{side} {lr} steering positive center lock", "66", (x, y, 590), (92, 68, 34), 5),
+            _soft_box(prefix + "suspension_tower_cassette", f"{side} {lr} vertical suspension cassette", "61", (tower_x, y, 510), (92, 82, 430), 6),
+            _cylinder(prefix + "swingarm_pivot_25mm", f"{side} {lr} 25 mm swingarm pivot shaft", "60", (x - sx * 108, y, 314), g["swingarm_pivot_diameter_mm"] / 2, 176, "Y"),
+            _rod_xz(prefix + "lower_swingarm_left_link", f"{side} {lr} lower swing arm left tubular link", "60", (tower_x, y + sy * 35, 360), (x, y + sy * 35, z_axle + 105), 11, "steel"),
+            _rod_xz(prefix + "lower_swingarm_right_link", f"{side} {lr} lower swing arm right tubular link", "60", (tower_x, y - sy * 35, 360), (x, y - sy * 35, z_axle + 105), 11, "steel"),
+            _rod_xz(prefix + "upper_reaction_left_link", f"{side} {lr} upper reaction left tubular link", "60", (tower_x, y + sy * 28, 515), (x, y + sy * 28, z_axle + 250), 9, "steel"),
+            _rod_xz(prefix + "upper_reaction_right_link", f"{side} {lr} upper reaction right tubular link", "60", (tower_x, y - sy * 28, 515), (x, y - sy * 28, z_axle + 250), 9, "steel"),
+            _soft_box(prefix + "swingarm_clevis_at_tower", f"{side} {lr} tower clevis for lower swing arm", "60", (tower_x, y, 360), (46, 118, 54), 4, material="steel"),
+            _soft_box(prefix + "swingarm_clevis_at_fork", f"{side} {lr} fork clevis for lower swing arm", "60", (x, y, z_axle + 105), (54, 118, 54), 4, material="steel"),
             _cylinder(prefix + "passive_spring_damper", f"{side} {lr} passive spring damper envelope", "61", (tower_x + sx * 42, y, 510), 18, 280, "Z"),
-            _cylinder(prefix + "bnk1404_ball_screw", f"{side} {lr} THK BNK1404 ball screw envelope", "62", (tower_x, y, 512), g["ball_screw_diameter_mm_SRC"] / 2, 392, "Z"),
+            _cylinder(prefix + "bnk1404_ball_screw", f"{side} {lr} THK BNK1404 ball screw 430 mm shaft envelope", "62", (tower_x, y, 512), g["ball_screw_diameter_mm_SRC"] / 2, screw_len, "Z"),
+            _cylinder(prefix + "stroke_300mm_travel_datum", f"{side} {lr} selected 300 mm independent corner stroke datum", "62", (tower_x + sx * 34, y, 512), 2.5, selected_stroke, "Z", "copper"),
             _box(prefix + "ballnut_carriage_bridge", f"{side} {lr} ballnut carriage bridge", "62", (tower_x, y, 472), (82, 104, 54)),
-            _box(prefix + "linear_guide_rail_a", f"{side} {lr} linear guide rail A", "63", (tower_x - 24, y + sy * 31, 508), (16, 12, 362)),
-            _box(prefix + "linear_guide_rail_b", f"{side} {lr} linear guide rail B", "63", (tower_x + 24, y - sy * 31, 508), (16, 12, 362)),
-            _box(prefix + "linear_guide_block_a", f"{side} {lr} linear guide carriage block A", "63", (tower_x - 24, y + sy * 31, 472), (36, 58, 30)),
-            _box(prefix + "linear_guide_block_b", f"{side} {lr} linear guide carriage block B", "63", (tower_x + 24, y - sy * 31, 472), (36, 58, 30)),
+            _soft_box(prefix + "moving_slider_plate", f"{side} {lr} guided moving slider plate connecting ballnut to links", "62", (tower_x + sx * 4, y, 472), (110, 132, 18), 4, material="steel"),
+            _box(prefix + "hsr15_linear_guide_rail_a", f"{side} {lr} THK HSR15 vertical guide rail A", "63", (tower_x - 24, y + sy * 31, 508), (16, 12, 400)),
+            _box(prefix + "hsr15_linear_guide_rail_b", f"{side} {lr} THK HSR15 vertical guide rail B", "63", (tower_x + 24, y - sy * 31, 508), (16, 12, 400)),
+            _soft_box(prefix + "hsr15c_guide_block_a", f"{side} {lr} THK HSR15C guide block A", "63", (tower_x - 24, y + sy * 31, 472), (24, 47, 56.6), 3, material="steel"),
+            _soft_box(prefix + "hsr15c_guide_block_b", f"{side} {lr} THK HSR15C guide block B", "63", (tower_x + 24, y - sy * 31, 472), (24, 47, 56.6), 3, material="steel"),
             _cylinder(prefix + "actuator_motor_eci40", f"{side} {lr} Maxon EC-i 40 actuator motor envelope", "64", (tower_x, y + sy * 104, 728), 20, 82, "Y"),
             _cylinder(prefix + "gpx42_gearhead", f"{side} {lr} GPX42 12:1 gearhead envelope", "65", (tower_x, y + sy * 50, 728), 21, 58, "Y"),
-            _cylinder(prefix + "ab28_power_off_brake", f"{side} {lr} AB28 power off brake envelope", "66", (tower_x, y + sy * 150, 728), 18, 32, "Y"),
+            _cylinder(prefix + "ab60s_power_off_holding_brake", f"{side} {lr} maxon AB 60 S 5 Nm normally-engaged holding brake", "66", (tower_x, y + sy * 162, 728), 30, 39, "Y", "steel"),
             _box(prefix + "anti_drop_rack", f"{side} {lr} anti drop rack", "66", (tower_x - sx * 68, y, 510), (20, 24, 332)),
             _box(prefix + "anti_drop_pawl", f"{side} {lr} primary anti drop pawl", "66", (tower_x - sx * 46, y + sy * 34, 390), (42, 18, 92)),
-            _cylinder(prefix + "wheel_drive_motor", f"{side} {lr} coaxial wheel drive motor", "69", (x, y - sy * 94, z_axle), 36, 82, "Y"),
+            _cylinder(prefix + "bg75_wheel_drive_motor", f"{side} {lr} Dunkermotoren BG75-class wheel drive motor envelope", "69", (x, y - sy * 122, z_axle), 37.5, 96, "Y"),
+            _cylinder(prefix + "plg75_wheel_planetary_gearbox", f"{side} {lr} PLG75-class planetary gearbox wheel reduction envelope", "69", (x, y - sy * 70, z_axle), 39, 58, "Y", "steel"),
+            _soft_box(prefix + "deutsch_dtp_power_connector", f"{side} {lr} TE DEUTSCH DTP sealed power connector", "69", (tower_x + sx * 82, y + sy * 96, 610), (47.27, 27.15, 22.05), 3, material="plastic"),
+            _soft_box(prefix + "deutsch_dt_signal_connector", f"{side} {lr} TE DEUTSCH DT sealed signal connector", "67/68", (tower_x + sx * 82, y - sy * 96, 650), (44.02, 22.25, 36.45), 3, material="plastic"),
+            _cylinder(prefix + "corner_power_harness_conduit", f"{side} {lr} sealed power harness conduit", "69", (tower_x + sx * 40, y + sy * 96, 580), 7, 160, "X", "plastic"),
+            _cylinder(prefix + "corner_signal_harness_conduit", f"{side} {lr} sealed signal harness conduit", "67/68", (tower_x + sx * 40, y - sy * 96, 620), 5, 160, "X", "plastic"),
             _gusset(prefix + "tower_frame_gusset", f"{side} {lr} triangular tower to rail gusset", "61", (tower_x + sx * 42, y, 375), 165, 160, 8, sx),
         ]
     )
+
+    for i, z_mount in enumerate((370, 610)):
+        components.extend(_bolt_y(prefix + f"tower_lug_m8_{i}_upper", (tower_x - 32, rail_y, z_mount + 18), 76))
+        components.extend(_bolt_y(prefix + f"tower_lug_m8_{i}_lower", (tower_x + 32, rail_y, z_mount - 18), 76))
+
+    for i, z_fastener in enumerate((350, 430, 510, 590, 670)):
+        components.extend(_bolt_y(prefix + f"guide_rail_a_m5_{i}", (tower_x - 24, y + sy * 46, z_fastener), 28, 5))
+        components.extend(_bolt_y(prefix + f"guide_rail_b_m5_{i}", (tower_x + 24, y - sy * 46, z_fastener), 28, 5))
+
+    for i, z_block in enumerate((300, 725)):
+        components.extend(_bolt_y(prefix + f"thrust_block_m8_a_{i}", (tower_x - 28, y, z_block), 110))
+        components.extend(_bolt_y(prefix + f"thrust_block_m8_b_{i}", (tower_x + 28, y, z_block), 110))
+
+    for i, pin_z in enumerate((z_axle + 105, z_axle + 250, 360, 515)):
+        pin_x = x if i < 2 else tower_x
+        components.extend(_bolt_y(prefix + f"suspension_link_pin_{i}", (pin_x, y, pin_z), 146, 10))
+        components.append(_tube(prefix + f"iglidur_g_pivot_bushing_{i}", f"{side} {lr} iglidur G pivot bushing sleeve", "60", (pin_x, y, pin_z), 15, 10.5, 104, "Y", "plastic"))
 
     if sx < 0:
         components.extend(
@@ -206,7 +400,7 @@ def _add_reference_geometry(components: list[Component], g: dict) -> None:
         )
 
 
-def build_components(params: dict) -> list[Component]:
+def build_components(params: dict, include_reference: bool = False) -> list[Component]:
     g = params["geometry"]
     components: list[Component] = []
     _add_chassis(components, g)
@@ -215,7 +409,8 @@ def build_components(params: dict) -> list[Component]:
     _add_handle_and_sensors(components, g)
     for code, sx, sy in (("FL", 1, 1), ("FR", 1, -1), ("RL", -1, 1), ("RR", -1, -1)):
         _add_corner(components, g, code, sx, sy)
-    _add_reference_geometry(components, g)
+    if include_reference:
+        _add_reference_geometry(components, g)
     return components
 
 
@@ -289,15 +484,16 @@ def export_dxf(path: Path, g: dict) -> None:
 def export_model(params: dict, out_dir: Path) -> dict:
     out_dir.mkdir(parents=True, exist_ok=True)
     components = build_components(params)
-    assembly = _compound(components)
+    compound = _compound(components)
 
     step_path = out_dir / "Terrain_Elevate_P1_V0_59_OCCT.step"
     stl_path = out_dir / "Terrain_Elevate_P1_V0_59_OCCT.stl"
     dxf_path = out_dir / "Terrain_Elevate_P1_V0_59_package.dxf"
     manifest_path = out_dir / "Terrain_Elevate_P1_V0_59_manifest.json"
 
-    exporters.export(assembly, str(step_path), exportType="STEP")
-    exporters.export(assembly, str(stl_path), exportType="STL", tolerance=0.25, angularTolerance=0.2)
+    step_assembly = _assembly_from_components(components)
+    step_assembly.save(str(step_path), exportType="STEP")
+    exporters.export(compound, str(stl_path), exportType="STL", tolerance=0.25, angularTolerance=0.2)
     export_dxf(dxf_path, params["geometry"])
 
     imported = importers.importStep(str(step_path))
@@ -321,6 +517,137 @@ def export_model(params: dict, out_dir: Path) -> dict:
         },
         "locked_constraints": params["locked_constraints"],
         "geometry": params["geometry"],
+        "sourced_parts": [
+            {
+                "callout": "62",
+                "part": "THK BNK1404-3RRG2+430LC7Y",
+                "modeled_as": "14 mm screw shaft, 430 mm shaft length, 300 mm travel datum, fixed/support bearing blocks",
+                "source_values": {
+                    "stroke_mm": 300.0,
+                    "lead_mm": 4.0,
+                    "dynamic_load_rating_kN": 4.2,
+                    "static_load_rating_kN": 7.6,
+                    "recommended_fixed_support": "EK12 or FK12",
+                    "recommended_supported_support": "EF12 or FF12",
+                },
+            },
+            {
+                "callout": "62",
+                "part": "THK FK12/FF12 screw support unit family",
+                "modeled_as": "fixed and supported end bearing housings tied into the suspension tower",
+                "source_values": {
+                    "ball_screw_shaft_outer_diameter_mm": 14.0,
+                    "recommended_by": "THK BNK1404-3RRG2+430LC7Y detail specification",
+                },
+            },
+            {
+                "callout": "63",
+                "part": "THK HSR15C linear guide block with HSR15 rail",
+                "modeled_as": "paired vertical guide rails and two HSR15C carriage blocks per corner",
+                "source_values": {
+                    "block_height_mm": 24.0,
+                    "block_width_mm": 47.0,
+                    "block_length_mm": 56.6,
+                    "dynamic_load_rating_kN": 10.9,
+                    "static_load_rating_kN": 15.7,
+                    "rail_tap": "M5",
+                },
+            },
+            {
+                "callout": "64",
+                "part": "maxon EC-i 40 screened actuator motor family",
+                "modeled_as": "40 mm diameter motor envelope with gearhead/brake stack",
+                "source_values": {
+                    "diameter_mm": 40.0,
+                    "nominal_power_W": 100.0,
+                },
+            },
+            {
+                "callout": "13-26",
+                "part": "Thomson Electrak MD MDxxA200 pod pitch-leveling actuator family",
+                "modeled_as": "paired compact linear actuator bodies, extension tubes, and clevis pins controlling 36.03 degree pod pitch correction",
+                "source_values": {
+                    "selected_dynamic_load_N": 2000.0,
+                    "maximum_stroke_mm": 300.0,
+                    "supported_input_voltages_VDC": "12/24/48 family",
+                    "protection_class_family": "IP67/IP69K static, IP66 dynamic",
+                },
+            },
+            {
+                "callout": "66",
+                "part": "maxon AB 60 S 24 VDC 5.0 Nm holding brake",
+                "modeled_as": "60 mm diameter, 39 mm long normally-engaged brake envelope at each suspension actuator",
+                "source_values": {
+                    "holding_torque_Nm": 5.0,
+                    "calculated_required_holding_torque_Nm_with_safety_factor": 2.97,
+                    "nominal_voltage_VDC": 24.0,
+                    "unpowered_state": "braked",
+                    "not_for_dynamic_braking": True,
+                },
+            },
+            {
+                "callout": "69",
+                "part": "Dunkermotoren BG75-class BLDC motor with PLG75-class planetary gearbox",
+                "modeled_as": "75 mm class wheel drive motor plus PLG75-class planetary wheel reduction at each wheel",
+                "source_values": {
+                    "screen_requirement_per_wheel_torque_Nm": 53.8,
+                    "manufacturer_family_power_range_W": "BG family includes high-power BLDC gearmotor variants; BG75 dMove class up to 810 W per official press/spec summary",
+                    "planetary_gearbox_family_continuous_torque_Nm": "PLG family up to 130 Nm",
+                },
+            },
+            {
+                "callout": "68/69",
+                "part": "NXP S32K3 / STM32G474 / TI DRV8353 screened control and gate-driver families",
+                "modeled_as": "electronics housings with hardwired inhibit/watchdog and local motor-control package envelopes",
+            },
+            {
+                "callout": "67/68/69",
+                "part": "TE Connectivity DEUTSCH DTP and DT sealed connector families",
+                "modeled_as": "DTP power connectors and DT signal connectors at each corner and sensor branch",
+                "source_values": {
+                    "DTP_contact_current_A": 25,
+                    "DTP_wire_range_AWG": "10-14",
+                    "DTP_ip_rating": "IP68/IP6K9K family",
+                    "DT_contact_current_A": 13,
+                },
+            },
+            {
+                "callout": "69",
+                "part": "Littelfuse MIDI 498 58 V bolt-down high-current fuse holder",
+                "modeled_as": "left and right branch protection fuse blocks",
+                "source_values": {
+                    "continuous_current_A": 150,
+                    "max_current_A": 200,
+                    "voltage_rating_V": 58,
+                },
+            },
+            {
+                "callout": "60",
+                "part": "igus iglidur G pivot bushing material and igubal EGLM-25 spherical bearing family",
+                "modeled_as": "polymer pivot sleeves at suspension link pins and 25 mm misalignment bearing envelope at swing-arm pivots",
+                "source_values": {
+                    "iglidur_g_compressive_strength_MPa": 78.0,
+                    "eglm_25_shaft_diameter_mm": 25.0,
+                    "maintenance": "dry-running/lubrication-free family",
+                },
+            },
+            {
+                "callout": "FASTENER",
+                "part": "ISO 4762 socket-head cap screw families, class 12.9 where structurally loaded",
+                "modeled_as": "M5/M6/M8/M10 shanks, socket-heads, and washers at rails, guides, thrust blocks, clevises, trunnions, and electronics mounts",
+                "source_values": {
+                    "m8_socket_head_diameter_mm_modeled": 13.0,
+                    "m8_socket_head_height_mm_modeled": 8.0,
+                },
+            },
+        ],
+        "ebom_summary": {
+            "cad_body_count": len(components),
+            "by_material": _count_by(component.material for component in components),
+            "by_callout": _count_by(component.callout for component in components),
+            "by_subsystem": _count_by(_category_for(component) for component in components),
+        },
+        "step_stl_reference_geometry": "excluded; reference stair and width datums are carried in DXF/package context",
         "component_count": len(components),
         "component_volume_sum_mm3": sum(component.shape.val().Volume() for component in components),
         "reimported_step_volume_mm3": imported_solid.Volume(),
@@ -333,4 +660,3 @@ def export_model(params: dict, out_dir: Path) -> dict:
 
 def manifest_as_jsonable(manifest: dict) -> dict:
     return json.loads(json.dumps(manifest))
-

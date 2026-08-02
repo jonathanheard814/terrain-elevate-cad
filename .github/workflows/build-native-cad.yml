@@ -5,17 +5,21 @@ on:
   pull_request:
     paths:
       - "scripts/build_occt_cad.py"
+      - "scripts/analyze_vehicle_requirements.py"
       - "src/terrain_elevate/**"
       - "validate_outputs.py"
       - "data/te_v059_parameters.json"
+      - "data/te_v059_load_cases.json"
       - "requirements-cad.txt"
       - ".github/workflows/build-native-cad.yml"
   push:
     paths:
       - "scripts/build_occt_cad.py"
+      - "scripts/analyze_vehicle_requirements.py"
       - "src/terrain_elevate/**"
       - "validate_outputs.py"
       - "data/te_v059_parameters.json"
+      - "data/te_v059_load_cases.json"
       - "requirements-cad.txt"
       - ".github/workflows/build-native-cad.yml"
 
@@ -38,7 +42,9 @@ jobs:
           python -m pip install -r requirements-cad.txt
 
       - name: Build Fusion-ready prototype CAD
-        run: python scripts/build_occt_cad.py
+        run: |
+          python scripts/analyze_vehicle_requirements.py
+          python scripts/build_occt_cad.py
 
       - name: Validate outputs
         run: |
@@ -54,4 +60,5 @@ jobs:
             cad_out/Terrain_Elevate_P1_V0_59_OCCT.stl
             cad_out/Terrain_Elevate_P1_V0_59_package.dxf
             cad_out/Terrain_Elevate_P1_V0_59_manifest.json
+            analysis_out/Terrain_Elevate_P1_V0_59_requirements_screen.json
           if-no-files-found: error

@@ -18,6 +18,7 @@ def main() -> None:
     actuator = load["actuator_assumptions"]
     wheel = load["wheel_assumptions"]
     pod = load["pod_leveling_assumptions"]
+    joint = load["joint_and_linkage_assumptions"]
 
     gravity = 9.80665
     rise = g["stair_rise_reference_mm"] / 1000
@@ -71,6 +72,12 @@ def main() -> None:
     pod_pitch_torque = pod_mass * gravity * cg_offset_m
     pod_force_each = pod_pitch_torque / (moment_arm_m * pod["actuator_count"]) * pod["pod_actuator_safety_factor"]
     selected_pod_actuator_load = pod["selected_actuator_dynamic_load_N_SRC"]
+    rod_end_capacity = joint["selected_rod_end_static_radial_capacity_N_SRC"]
+    rod_end_design_load = (
+        governing_corner_force
+        / joint["rod_end_count_sharing_governing_corner_load_ASSUMED"]
+        * joint["rod_end_safety_factor"]
+    )
 
     results = {
         "truth_boundary": load["truth_boundary"],
@@ -121,6 +128,17 @@ def main() -> None:
             "selected_actuator_force_margin_N": selected_pod_actuator_load - pod_force_each,
             "selected_actuator_max_stroke_mm": pod["selected_actuator_max_stroke_mm_SRC"],
             "result": "PASS_FOR_SCREENING" if selected_pod_actuator_load >= pod_force_each else "FAIL",
+        },
+        "linkage_joint_screen": {
+            "selected_rod_end_family": joint["selected_rod_end_family_SRC"],
+            "selected_rod_end_ball_bore_mm": joint["selected_rod_end_ball_bore_mm_SRC"],
+            "governing_corner_force_N": governing_corner_force,
+            "rod_ends_assumed_sharing_load": joint["rod_end_count_sharing_governing_corner_load_ASSUMED"],
+            "rod_end_design_load_N_with_sf": rod_end_design_load,
+            "selected_rod_end_static_radial_capacity_N": rod_end_capacity,
+            "rod_end_capacity_margin_N": rod_end_capacity - rod_end_design_load,
+            "selected_lock_nut_family": joint["selected_lock_nut_family_SRC"],
+            "result": "PASS_FOR_SCREENING" if rod_end_capacity >= rod_end_design_load else "FAIL",
         },
         "selected_electrical_protection_and_interconnect": {
             "power_connector_family": "TE DEUTSCH DTP",

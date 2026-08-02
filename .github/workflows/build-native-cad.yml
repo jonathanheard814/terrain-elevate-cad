@@ -6,6 +6,7 @@ on:
     paths:
       - "scripts/build_occt_cad.py"
       - "scripts/analyze_vehicle_requirements.py"
+      - "scripts/audit_assembly_connectivity.py"
       - "src/terrain_elevate/**"
       - "validate_outputs.py"
       - "data/te_v059_parameters.json"
@@ -16,6 +17,7 @@ on:
     paths:
       - "scripts/build_occt_cad.py"
       - "scripts/analyze_vehicle_requirements.py"
+      - "scripts/audit_assembly_connectivity.py"
       - "src/terrain_elevate/**"
       - "validate_outputs.py"
       - "data/te_v059_parameters.json"
@@ -49,6 +51,7 @@ jobs:
       - name: Validate outputs
         run: |
           python validate_outputs.py
+          python scripts/audit_assembly_connectivity.py
           find cad_out -maxdepth 2 -type f -print
 
       - name: Upload Fusion-ready CAD files
@@ -61,4 +64,5 @@ jobs:
             cad_out/Terrain_Elevate_P1_V0_59_package.dxf
             cad_out/Terrain_Elevate_P1_V0_59_manifest.json
             analysis_out/Terrain_Elevate_P1_V0_59_requirements_screen.json
+            analysis_out/Terrain_Elevate_P1_V0_59_connectivity_audit.json
           if-no-files-found: error

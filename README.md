@@ -22,6 +22,7 @@ python -m pip install -r requirements-cad.txt
 python scripts/analyze_vehicle_requirements.py
 python scripts/build_occt_cad.py
 python validate_outputs.py
+python scripts/audit_assembly_connectivity.py
 ```
 
 Outputs are written to `cad_out/`:
@@ -32,6 +33,7 @@ Outputs are written to `cad_out/`:
 - `Terrain_Elevate_P1_V0_59_manifest.json`
 
 The physics and sizing screen is written to `analysis_out/Terrain_Elevate_P1_V0_59_requirements_screen.json`.
+The body-by-body connectivity audit is written to `analysis_out/Terrain_Elevate_P1_V0_59_connectivity_audit.json`.
 
 The legacy FreeCAD script remains in the repository as a reference path, but the GitHub Actions build now targets the OCCT/CadQuery generator.
 
@@ -46,5 +48,7 @@ The legacy FreeCAD script remains in the repository as a reference path, but the
 - Dunkermotoren BG75/PLG75-class wheel drive family
 - TE DEUTSCH DTP/DT sealed connector families and Littelfuse MIDI 498 fuse blocks
 - igus iglidur G / igubal pivot bushing and spherical bearing families
+- Aurora AM-M10T M10 PTFE-lined rod ends
+- ISO 4762 socket-head cap screws and DIN 985 / ISO 10511 lock nuts
 - S32K3, STM32G474, and DRV8353 screened control and drive families
 - Explicit pivot pins, screw supports, guide rail fasteners, washers, tower lugs, clevises, and chassis/pod attachment hardware

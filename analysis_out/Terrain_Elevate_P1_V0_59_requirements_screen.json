@@ -48,6 +48,17 @@
     "selected_actuator_max_stroke_mm": 300.0,
     "result": "PASS_FOR_SCREENING"
   },
+  "linkage_joint_screen": {
+    "selected_rod_end_family": "Aurora AM-M10T metric male PTFE-lined rod end",
+    "selected_rod_end_ball_bore_mm": 10.0,
+    "governing_corner_force_N": 1323.8977499999999,
+    "rod_ends_assumed_sharing_load": 2,
+    "rod_end_design_load_N_with_sf": 1985.8466249999997,
+    "selected_rod_end_static_radial_capacity_N": 50227.0,
+    "rod_end_capacity_margin_N": 48241.153375,
+    "selected_lock_nut_family": "DIN 985 / ISO 10511 prevailing torque lock nut",
+    "result": "PASS_FOR_SCREENING"
+  },
   "selected_electrical_protection_and_interconnect": {
     "power_connector_family": "TE DEUTSCH DTP",
     "power_connector_contact_rating_A": 25,

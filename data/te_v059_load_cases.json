@@ -35,5 +35,13 @@
     "selected_actuator_family_SRC": "Thomson Electrak MD MDxxA200",
     "selected_actuator_dynamic_load_N_SRC": 2000.0,
     "selected_actuator_max_stroke_mm_SRC": 300.0
+  },
+  "joint_and_linkage_assumptions": {
+    "selected_rod_end_family_SRC": "Aurora AM-M10T metric male PTFE-lined rod end",
+    "selected_rod_end_ball_bore_mm_SRC": 10.0,
+    "selected_rod_end_static_radial_capacity_N_SRC": 50227.0,
+    "rod_end_count_sharing_governing_corner_load_ASSUMED": 2,
+    "rod_end_safety_factor": 3.0,
+    "selected_lock_nut_family_SRC": "DIN 985 / ISO 10511 prevailing torque lock nut"
   }
 }

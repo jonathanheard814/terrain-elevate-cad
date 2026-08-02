@@ -1,0 +1,27 @@
+{
+  "project": "Terrain Elevate P1 Stair-Climbing Stroller Mechanism",
+  "version": "V0.59",
+  "locked_constraints": {
+    "main_ground_contact_wheels": 4,
+    "extra_small_wheels": 0,
+    "anti_tip_rollers": 0,
+    "belts": 0,
+    "tracks": 0,
+    "canopy": 0,
+    "footrest": 0,
+    "decorative_geometry": 0,
+    "truth_boundary": "Mechanism CAD generation only. No native FEA, certification, or physical verification claimed."
+  },
+  "geometry": {
+    "wheel_diameter_mm": 280.0,
+    "wheel_width_mm": 75.0,
+    "wheelbase_mm": 720.0,
+    "track_mm": 620.0,
+    "frame_z_mm": 385.0,
+    "overall_width_gate_mm": 750.0,
+    "stair_rise_reference_mm": 203.2,
+    "stair_going_reference_mm": 279.4,
+    "pivot_diameter_mm_OPEN": 25.0,
+    "ball_screw_diameter_mm_SRC": 14.0
+  }
+}

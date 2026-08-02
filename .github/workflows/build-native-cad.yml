@@ -1,0 +1,11 @@
+name: Build Terrain Elevate Native CAD
+
+on:
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Confirm workflow works
+        run: echo "Terrain Elevate workflow detected"

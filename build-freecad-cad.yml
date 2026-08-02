@@ -1,0 +1,57 @@
+name: Build Terrain Elevate FreeCAD CAD
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'scripts/**'
+      - 'data/**'
+      - '.github/workflows/build-freecad-cad.yml'
+
+jobs:
+  build-freecad-cad:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 45
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install FreeCAD headless
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y freecad python3-pip zip
+          which freecad || true
+          which freecadcmd || true
+          which FreeCADCmd || true
+
+      - name: Build native FreeCAD document and STEP
+        run: |
+          set -euxo pipefail
+          mkdir -p cad_out
+          if command -v freecadcmd >/dev/null 2>&1; then
+            freecadcmd scripts/build_te_v059_freecad.py
+          elif command -v FreeCADCmd >/dev/null 2>&1; then
+            FreeCADCmd scripts/build_te_v059_freecad.py
+          else
+            freecad --console scripts/build_te_v059_freecad.py
+          fi
+
+      - name: Validate exported CAD artifacts
+        run: |
+          set -euxo pipefail
+          test -s cad_out/Terrain_Elevate_V0_59_native.FCStd
+          test -s cad_out/Terrain_Elevate_V0_59.step
+          test -s cad_out/Terrain_Elevate_V0_59_manifest.json
+          python3 scripts/validate_outputs.py
+
+      - name: Package CAD outputs
+        run: |
+          set -euxo pipefail
+          zip -r cad_out/Terrain_Elevate_V0_59_CAD_outputs.zip cad_out docs data scripts             -x 'cad_out/Terrain_Elevate_V0_59_CAD_outputs.zip'
+
+      - name: Upload CAD artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Terrain_Elevate_V0_59_CAD_outputs
+          path: cad_out/Terrain_Elevate_V0_59_CAD_outputs.zip

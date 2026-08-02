@@ -2,13 +2,17 @@
 import json
 from pathlib import Path
 
+import ezdxf
+from cadquery import importers
+
 out = Path("cad_out")
-manifest_path = out / "Terrain_Elevate_V0_59_manifest.json"
-fcstd = out / "Terrain_Elevate_V0_59_native.FCStd"
-step = out / "Terrain_Elevate_V0_59.step"
+manifest_path = out / "Terrain_Elevate_P1_V0_59_manifest.json"
+step = out / "Terrain_Elevate_P1_V0_59_OCCT.step"
+stl = out / "Terrain_Elevate_P1_V0_59_OCCT.stl"
+dxf = out / "Terrain_Elevate_P1_V0_59_package.dxf"
 
 errors = []
-for p in [manifest_path, fcstd, step]:
+for p in [manifest_path, step, stl, dxf]:
     if not p.exists():
         errors.append(f"Missing {p}")
     elif p.stat().st_size <= 0:
@@ -16,12 +20,33 @@ for p in [manifest_path, fcstd, step]:
 
 if manifest_path.exists():
     m = json.loads(manifest_path.read_text())
-    if m.get("solid_body_count", 0) < 80:
-        errors.append(f"Expected at least 80 solid bodies, got {m.get('solid_body_count')}")
-    if not m.get("bounding_box_mm"):
-        errors.append("Missing bounding box")
-    if "extra helper wheels" in json.dumps(m).lower():
-        errors.append("Forbidden extra helper wheels detected in manifest text")
+    if m.get("component_count", 0) < 120:
+        errors.append(f"Expected at least 120 components, got {m.get('component_count')}")
+    if not m.get("reimported_step_bounding_box_mm"):
+        errors.append("Missing reimported STEP bounding box")
+    if m.get("locked_constraints", {}).get("main_ground_contact_wheels") != 4:
+        errors.append("Prototype must have exactly four ground-contact wheels")
+    forbidden = ("extra helper wheel", "belt drive", "crawler track", "anti tip roller", "anti-tip roller")
+    generated_text = json.dumps(m.get("components", [])).lower()
+    for phrase in forbidden:
+        if phrase in generated_text:
+            errors.append(f"Forbidden generated geometry phrase found in manifest: {phrase}")
+
+if step.exists():
+    try:
+        imported = importers.importStep(str(step))
+        if imported.val().Volume() <= 0:
+            errors.append("Reimported STEP has no measurable volume")
+    except Exception as exc:
+        errors.append(f"Unable to reimport STEP: {exc}")
+
+if dxf.exists():
+    try:
+        parsed = ezdxf.readfile(dxf)
+        if len(parsed.modelspace()) < 1:
+            errors.append("DXF contains no modelspace entities")
+    except Exception as exc:
+        errors.append(f"Unable to parse DXF: {exc}")
 
 if errors:
     print("CAD VALIDATION FAIL")
@@ -30,6 +55,7 @@ if errors:
     raise SystemExit(1)
 
 print("CAD VALIDATION PASS")
-print("FCStd bytes:", fcstd.stat().st_size)
 print("STEP bytes:", step.stat().st_size)
+print("STL bytes:", stl.stat().st_size)
+print("DXF bytes:", dxf.stat().st_size)
 print("Manifest:", manifest_path)

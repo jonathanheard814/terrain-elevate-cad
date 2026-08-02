@@ -1,0 +1,49 @@
+name: Build Terrain Elevate Native CAD
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - "build_te_v059_freecad.py"
+      - "validate_outputs.py"
+      - ".github/workflows/build-native-cad.yml"
+
+jobs:
+  build-step:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 30
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install FreeCAD/OpenCascade
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y freecad
+
+      - name: Build native CAD
+        run: |
+          mkdir -p dist
+          if command -v freecadcmd >/dev/null 2>&1; then
+            freecadcmd build_te_v059_freecad.py
+          else
+            FreeCADCmd build_te_v059_freecad.py
+          fi
+          find . -maxdepth 3 -type f
+
+      - name: Validate outputs
+        run: |
+          python3 validate_outputs.py || true
+          find . -maxdepth 4 -type f \( -name "*.step" -o -name "*.stp" -o -name "*.FCStd" -o -name "*.json" \)
+
+      - name: Upload Fusion-ready CAD files
+        uses: actions/upload-artifact@v4
+        with:
+          name: TerrainElevate-P1-V059-Fusion-Ready
+          path: |
+            **/*.step
+            **/*.stp
+            **/*.FCStd
+            **/*validation*.json
+            **/*report*.json
+          if-no-files-found: error

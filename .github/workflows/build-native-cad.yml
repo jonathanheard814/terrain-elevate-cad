@@ -11,12 +11,16 @@ on:
       - "scripts/validate_simulation_package.py"
       - "scripts/generate_matlab_package.py"
       - "scripts/audit_design_acceptance.py"
+      - "scripts/audit_physics_basis.py"
       - "src/terrain_elevate/**"
       - "validate_outputs.py"
       - "data/te_v059_parameters.json"
       - "data/te_v059_load_cases.json"
       - "data/te_v059_mass_properties.json"
+      - "data/te_v059_sourced_part_register.json"
+      - "data/te_v059_physics_elements.json"
       - "requirements-cad.txt"
+      - "requirements-sim.txt"
       - ".github/workflows/build-native-cad.yml"
   push:
     paths:
@@ -27,12 +31,16 @@ on:
       - "scripts/validate_simulation_package.py"
       - "scripts/generate_matlab_package.py"
       - "scripts/audit_design_acceptance.py"
+      - "scripts/audit_physics_basis.py"
       - "src/terrain_elevate/**"
       - "validate_outputs.py"
       - "data/te_v059_parameters.json"
       - "data/te_v059_load_cases.json"
       - "data/te_v059_mass_properties.json"
+      - "data/te_v059_sourced_part_register.json"
+      - "data/te_v059_physics_elements.json"
       - "requirements-cad.txt"
+      - "requirements-sim.txt"
       - ".github/workflows/build-native-cad.yml"
 
 jobs:
@@ -52,6 +60,7 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           python -m pip install -r requirements-cad.txt
+          python -m pip install -r requirements-sim.txt
 
       - name: Build Fusion-ready prototype CAD
         run: |
@@ -64,6 +73,7 @@ jobs:
         run: |
           python validate_outputs.py
           python scripts/audit_assembly_connectivity.py
+          python scripts/audit_physics_basis.py
           python scripts/validate_simulation_package.py
           python scripts/audit_design_acceptance.py
           find cad_out -maxdepth 2 -type f -print
@@ -81,8 +91,12 @@ jobs:
             cad_out/Terrain_Elevate_P1_V0_59_package.dxf
             cad_out/Terrain_Elevate_P1_V0_59_manifest.json
             analysis_out/Terrain_Elevate_P1_V0_59_requirements_screen.json
+            analysis_out/Terrain_Elevate_P1_V0_59_stair_phase_actuator_sweep.csv
             analysis_out/Terrain_Elevate_P1_V0_59_connectivity_audit.json
+            analysis_out/Terrain_Elevate_P1_V0_59_physics_basis_audit.json
             analysis_out/Terrain_Elevate_P1_V0_59_design_acceptance_audit.json
+            data/te_v059_sourced_part_register.json
+            data/te_v059_physics_elements.json
             sim_out/Terrain_Elevate_P1_V0_59_sim.urdf
             sim_out/Terrain_Elevate_P1_V0_59_joint_graph.json
             sim_out/load_terrain_elevate_matlab.m

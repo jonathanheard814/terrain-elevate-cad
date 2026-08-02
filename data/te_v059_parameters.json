@@ -22,10 +22,11 @@
     "stair_rise_reference_mm": 203.2,
     "stair_going_reference_mm": 279.4,
     "swingarm_pivot_diameter_mm": 25.0,
-    "ball_screw_diameter_mm_SRC": 14.0,
+    "ball_screw_diameter_mm_SRC": 20.0,
+    "ball_screw_lead_mm_SRC": 10.0,
     "corner_stroke_required_mm_CALC": 238.2,
     "corner_stroke_selected_mm_SRC": 300.0,
-    "ball_screw_shaft_length_mm_SRC": 430.0,
+    "ball_screw_shaft_length_mm_SRC": 499.0,
     "stair_angle_deg_CALC": 36.03,
     "pod_pitch_correction_deg_CALC": 36.03
   }

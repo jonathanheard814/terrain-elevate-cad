@@ -22,8 +22,8 @@ for p in [manifest_path, step, stl, pose_step, pose_stl, dxf]:
 
 if manifest_path.exists():
     m = json.loads(manifest_path.read_text())
-    if m.get("component_count", 0) < 790:
-        errors.append(f"Expected at least 790 connected/sourced assembly components, got {m.get('component_count')}")
+    if m.get("component_count", 0) < 1300:
+        errors.append(f"Expected at least 1300 connected/sourced assembly components, got {m.get('component_count')}")
     if not m.get("reimported_step_bounding_box_mm"):
         errors.append("Missing reimported STEP bounding box")
     if "stair_climb_pose_step_file" not in m.get("outputs", {}):
@@ -33,7 +33,7 @@ if manifest_path.exists():
     if m.get("locked_constraints", {}).get("main_ground_contact_wheels") != 4:
         errors.append("Prototype must have exactly four ground-contact wheels")
     sourced = json.dumps(m.get("sourced_parts", [])).lower()
-    for required_part in ("bnk1404", "hsr15", "ab 60", "electrak md", "deutsch dtp", "midi 498", "iglidur g", "am-m10t", "din 985"):
+    for required_part in ("bnk2010", "hsr15", "ec-i 52", "gpx52", "ab 44", "electrak md", "deutsch dtp", "midi 498", "iglidur g", "am-m10t", "din 985", "encoder", "load-sensing"):
         if required_part not in sourced:
             errors.append(f"Required sourced part missing from manifest: {required_part}")
     ebom = m.get("ebom_summary", {})

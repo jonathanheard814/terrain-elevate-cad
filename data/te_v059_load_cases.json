@@ -15,10 +15,10 @@
   },
   "actuator_assumptions": {
     "screw_efficiency_ASSUMED": 0.85,
-    "gearbox_efficiency_ASSUMED": 0.75,
-    "motor_nominal_torque_Nm_SRC": 0.209,
-    "motor_nominal_speed_rpm_SRC": 3920.0,
-    "gear_ratio_ASSUMED": 12.0,
+    "gearbox_efficiency_ASSUMED": 0.95,
+    "motor_nominal_torque_Nm_SRC": 1.02,
+    "motor_nominal_speed_rpm_SRC": 3990.0,
+    "gear_ratio_ASSUMED": 3.9,
     "holding_brake_safety_factor": 3.0
   },
   "wheel_assumptions": {
@@ -43,5 +43,13 @@
     "rod_end_count_sharing_governing_corner_load_ASSUMED": 2,
     "rod_end_safety_factor": 3.0,
     "selected_lock_nut_family_SRC": "DIN 985 / ISO 10511 prevailing torque lock nut"
+  },
+  "combined_climb_assumptions": {
+    "stair_climb_forward_speed_mps_ASSUMED": 0.2,
+    "control_loop_period_ms_ASSUMED": 0.5,
+    "sensor_process_period_ms_ASSUMED": 5.0,
+    "local_drive_suspension_loop": "Sub-millisecond motor/suspension command loop; preview sensors feed a predictive stair phase map and are not waited on at the stair edge.",
+    "control_mode": "Sensor-previewed predictive corner prepositioning plus sub-millisecond local wheel torque and suspension control; not wheel-only climbing.",
+    "minimum_preview_distance_fraction_of_going": 1.0
   }
 }

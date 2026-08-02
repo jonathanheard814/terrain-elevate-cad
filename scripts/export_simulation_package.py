@@ -74,11 +74,11 @@ def _component_link(component: Component) -> str:
     for prefix in ("fl", "fr", "rl", "rr"):
         if name.startswith(prefix + "_"):
             corner = _prefix_to_corner(prefix)
-            if any(token in name for token in ("tire", "hub_shell", "live_axle", "axle_inner_spacer", "axle_left_retaining_nut", "axle_right_retaining_nut", "6002_hub_bearing")):
+            if any(token in name for token in ("tire", "hub_shell", "live_axle", "axle_inner_spacer", "axle_left_retaining_nut", "axle_right_retaining_nut", "6002_hub_bearing", "wheel_encoder_magnet_ring")):
                 return f"{corner}_wheel"
-            if any(token in name for token in ("fork", "wheel_drive", "planetary", "service_disc", "antirollback_dog")):
+            if any(token in name for token in ("fork", "wheel_drive", "planetary", "service_disc", "antirollback_dog", "wheel_encoder_pickup", "wheel_encoder_sensor")):
                 return f"{corner}_wheel_module"
-            if any(token in name for token in ("ballnut", "moving_slider", "slider_", "bellcrank", "pushrod", "rod_end", "clevis_m10", "jam_nut")):
+            if any(token in name for token in ("ballnut", "moving_slider", "slider_", "bellcrank", "pushrod", "rod_end", "clevis_m10", "jam_nut", "linear_scale_read_head")):
                 return f"{corner}_slider"
             return "chassis"
     return "chassis"
@@ -113,7 +113,9 @@ def _joint(robot: ET.Element, name: str, joint_type: str, parent: str, child: st
 def main() -> None:
     params = json.loads((ROOT / "data" / "te_v059_parameters.json").read_text())
     mass_props = json.loads((ROOT / "data" / "te_v059_mass_properties.json").read_text())
+    load_cases = json.loads((ROOT / "data" / "te_v059_load_cases.json").read_text())
     g = params["geometry"]
+    actuator = load_cases["actuator_assumptions"]
 
     out_dir = ROOT / "sim_out"
     mesh_dir = out_dir / "meshes"
@@ -139,7 +141,13 @@ def main() -> None:
     radius_m = g["wheel_diameter_mm"] / 2000
     stroke_m = g["corner_stroke_selected_mm_SRC"] / 1000
     pitch_limit = math.radians(g["pod_pitch_correction_deg_CALC"] + 5.0)
-    actuator_effort_n = 2511.0
+    screw_lead_m = g["ball_screw_lead_mm_SRC"] / 1000
+    motor_torque_nm = actuator["motor_nominal_torque_Nm_SRC"]
+    gear_ratio = actuator["gear_ratio_ASSUMED"]
+    gear_eff = actuator["gearbox_efficiency_ASSUMED"]
+    screw_eff = actuator["screw_efficiency_ASSUMED"]
+    actuator_effort_n = 2 * math.pi * screw_eff * motor_torque_nm * gear_ratio * gear_eff / screw_lead_m
+    actuator_velocity_m_s = actuator["motor_nominal_speed_rpm_SRC"] / gear_ratio * screw_lead_m / 60
     wheel_effort_nm = 60.0
 
     _joint(robot, "pod_pitch_leveling_joint", "revolute", "chassis", "occupant_pod", (0, 0, 0.26), (0, 1, 0), {"lower": -pitch_limit, "upper": pitch_limit, "effort": 2000, "velocity": 0.35})
@@ -154,7 +162,7 @@ def main() -> None:
         slider = f"{name}_slider"
         module = f"{name}_wheel_module"
         wheel = f"{name}_wheel"
-        _joint(robot, f"{name}_corner_prismatic_actuator", "prismatic", "chassis", slider, (x, y, 0), (0, 0, 1), {"lower": 0, "upper": stroke_m, "effort": actuator_effort_n, "velocity": 0.022})
+        _joint(robot, f"{name}_corner_prismatic_actuator", "prismatic", "chassis", slider, (x, y, 0), (0, 0, 1), {"lower": 0, "upper": stroke_m, "effort": actuator_effort_n, "velocity": actuator_velocity_m_s})
         _joint(robot, f"{name}_fork_carrier_fixed", "fixed", slider, module, (0, 0, -0.23), (0, 0, 1))
         _joint(robot, f"{name}_wheel_drive_joint", "continuous", module, wheel, (0, 0, -radius_m), (0, 1, 0), {"effort": wheel_effort_nm, "velocity": 35.0})
 
@@ -166,7 +174,7 @@ def main() -> None:
     joint_graph = {
         "truth_boundary": mass_props["truth_boundary"],
         "format": "URDF plus STL collision/visual meshes for mechanism simulation import",
-        "mesh_source": "CAD-derived grouped meshes from the detailed 793-body CadQuery assembly; not primitive placeholder boxes.",
+        "mesh_source": "CAD-derived grouped meshes from the detailed CadQuery assembly; not primitive placeholder boxes.",
         "link_component_counts": link_component_counts,
         "links": list(mass_props["links"].keys()),
         "degrees_of_freedom": {
@@ -178,7 +186,7 @@ def main() -> None:
         "limits": {
             "corner_stroke_m": stroke_m,
             "corner_prismatic_effort_N": actuator_effort_n,
-            "corner_prismatic_velocity_m_s": 0.022,
+            "corner_prismatic_velocity_m_s": actuator_velocity_m_s,
             "pod_pitch_limit_rad": pitch_limit,
             "wheel_drive_effort_Nm": wheel_effort_nm
         },

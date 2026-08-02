@@ -14,10 +14,13 @@ def main() -> None:
     errors: list[str] = []
     urdf = SIM / "Terrain_Elevate_P1_V0_59_sim.urdf"
     graph = SIM / "Terrain_Elevate_P1_V0_59_joint_graph.json"
+    physics = ROOT / "data" / "te_v059_physics_elements.json"
     if not urdf.exists():
         errors.append(f"Missing {urdf}")
     if not graph.exists():
         errors.append(f"Missing {graph}")
+    if not physics.exists():
+        errors.append(f"Missing {physics}")
 
     if urdf.exists():
         root = ET.parse(urdf).getroot()
@@ -64,6 +67,12 @@ def main() -> None:
         terrain = data.get("terrain_mesh")
         if terrain and not (SIM / terrain).exists():
             errors.append(f"Missing terrain mesh: {terrain}")
+
+    physics_audit = ROOT / "analysis_out" / "Terrain_Elevate_P1_V0_59_physics_basis_audit.json"
+    if physics_audit.exists():
+        physics_result = json.loads(physics_audit.read_text())
+        if physics_result.get("result") != "PASS":
+            errors.append("Physics basis audit did not pass")
 
     if errors:
         print("SIMULATION PACKAGE VALIDATION FAIL")

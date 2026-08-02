@@ -1,0 +1,125 @@
+{
+  "truth_boundary": "Simulation-basis physical parameters for mechanism/control screening. These are not certification data, tire dynamometer data, FEA, or validated physical-prototype measurements.",
+  "installed_or_supported_libraries": {
+    "cadquery_occt": {
+      "purpose": "Parametric solid generation and STEP/STL/DXF export",
+      "required": true
+    },
+    "scipy": {
+      "purpose": "Numerical dynamics calculations, interpolation, and signal/control math",
+      "required": true
+    },
+    "casadi": {
+      "purpose": "Trajectory optimization / model predictive control prototyping for the previewed stair-phase path",
+      "required": true
+    },
+    "trimesh": {
+      "purpose": "Mesh sanity inspection for CAD-derived URDF visual/collision meshes",
+      "required": true,
+      "installed_in_local_cad_environment": true
+    },
+    "pybullet": {
+      "purpose": "Optional external rigid-body contact simulation path",
+      "required": false,
+      "installed_in_local_cad_environment": false,
+      "blocker": "pybullet 3.2.7 attempted source build on this Windows host and failed because Microsoft Visual C++ Build Tools were not installed"
+    },
+    "matlab_solidworks": {
+      "purpose": "Primary downstream simulation route requested by the user: SolidWorks STEP import plus MATLAB/Simscape or Robotics System Toolbox URDF import",
+      "required": false
+    }
+  },
+  "environment": {
+    "gravity_mps2": 9.80665,
+    "reference_stair": {
+      "rise_m": 0.2032,
+      "going_m": 0.2794,
+      "angle_deg": 36.0273733851,
+      "material": "dry concrete/wood stair reference; final site friction must be measured"
+    }
+  },
+  "contact_model": {
+    "wheel_tire_on_dry_stair": {
+      "normal_stiffness_N_per_m": 180000.0,
+      "normal_damping_Ns_per_m": 1800.0,
+      "static_friction_mu_ASSUMED": 0.85,
+      "dynamic_friction_mu_ASSUMED": 0.65,
+      "rolling_resistance_coefficient_ASSUMED": 0.025,
+      "torsional_friction_coefficient_ASSUMED": 0.02,
+      "reason": "Screening values for rubber tire on dry rigid stair contact; must be replaced by measured tire compound/stair surface data before release."
+    },
+    "hard_stop_bumpers": {
+      "material": "polyurethane",
+      "normal_stiffness_N_per_m_ASSUMED": 350000.0,
+      "damping_Ns_per_m_ASSUMED": 2500.0,
+      "reason": "Models end-stop compliance so the controller is not simulated against impossible rigid stops."
+    }
+  },
+  "actuator_models": {
+    "corner_vertical_actuator": {
+      "motor": "maxon EC-i 52 part 633919",
+      "nominal_voltage_V": 48.0,
+      "nominal_power_W": 420.0,
+      "nominal_torque_Nm": 1.02,
+      "nominal_speed_rpm": 3990.0,
+      "nominal_current_A": 9.94,
+      "stall_torque_Nm": 4.83,
+      "stall_current_A": 174.0,
+      "terminal_resistance_ohm": 0.276,
+      "terminal_inductance_H": 0.00045,
+      "torque_constant_Nm_per_A": 0.0892,
+      "rotor_inertia_kgm2": 0.000017,
+      "mechanical_time_constant_s": 0.00059,
+      "gearhead": "maxon GPX52 UP 3.9:1 one-stage",
+      "gear_ratio": 3.9,
+      "gear_efficiency": 0.95,
+      "screw": "THK BNK2010-2.5RRG2+499LC7Y",
+      "screw_lead_m": 0.01,
+      "screw_efficiency_ASSUMED": 0.85,
+      "screened_linear_speed_mps": 0.1705128205,
+      "screened_axial_force_N": 2018.3067755,
+      "holding_brake": "maxon AB 44 24 VDC 2.5 Nm part 386054"
+    },
+    "wheel_drive": {
+      "motor_family": "Dunkermotoren BG75 dMove with PLG75 gearbox configured for wheel torque target",
+      "screened_per_wheel_torque_Nm": 53.83461047,
+      "urdf_effort_limit_Nm": 60.0,
+      "control_role": "smooth forward motion, torque redistribution, rollback prevention; not wheel-only stair lifting"
+    },
+    "pod_pitch_leveling": {
+      "actuator_family": "Thomson Electrak MD MDxxA200 configured 300 mm stroke / 2000 N class",
+      "selected_dynamic_load_N": 2000.0,
+      "screen_required_force_each_N": 514.849125,
+      "urdf_pitch_limit_deg": 41.03
+    }
+  },
+  "sensor_and_control_timing": {
+    "local_motor_suspension_command_loop_s": 0.0005,
+    "corner_position_sensor": {
+      "part": "Novotechnik TF1",
+      "update_period_s": 0.0001,
+      "resolution_m": 0.000001,
+      "role": "closed-loop vertical actuator position feedback"
+    },
+    "stair_preview_distance_sensor": {
+      "part": "ifm O1D100",
+      "process_period_s": 0.005,
+      "range_m": [0.2, 10.0],
+      "role": "preview stair geometry ahead of contact; controller does not wait at the stair edge"
+    },
+    "wheel_angle_speed_sensor": {
+      "part": "Novotechnik RFC-4800",
+      "range_deg": 360.0,
+      "role": "wheel speed/phase feedback for synchronized stair approach"
+    },
+    "combined_compute_sensor_latency_s": 0.0055,
+    "selected_forward_speed_mps": 0.2,
+    "minimum_preview_distance_m": 0.2794
+  },
+  "simulation_outputs_that_use_this_basis": [
+    "sim_out/Terrain_Elevate_P1_V0_59_sim.urdf",
+    "sim_out/Terrain_Elevate_P1_V0_59_joint_graph.json",
+    "sim_out/MATLAB_SOLIDWORKS_IMPORT_NOTES.json",
+    "analysis_out/Terrain_Elevate_P1_V0_59_physics_basis_audit.json"
+  ]
+}

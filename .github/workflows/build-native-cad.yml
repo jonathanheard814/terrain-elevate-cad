@@ -73,13 +73,23 @@ jobs:
           python scripts/export_simulation_package.py
           python scripts/generate_matlab_package.py
 
-      - name: Validate outputs
+      - name: Validate outputs - validate_outputs.py
+        run: python validate_outputs.py
+
+      - name: Validate outputs - audit_assembly_connectivity.py
+        run: python scripts/audit_assembly_connectivity.py
+
+      - name: Validate outputs - audit_physics_basis.py
+        run: python scripts/audit_physics_basis.py
+
+      - name: Validate outputs - validate_simulation_package.py
+        run: python scripts/validate_simulation_package.py
+
+      - name: Validate outputs - audit_design_acceptance.py
+        run: python scripts/audit_design_acceptance.py
+
+      - name: Validate outputs - list artifacts
         run: |
-          python validate_outputs.py
-          python scripts/audit_assembly_connectivity.py
-          python scripts/audit_physics_basis.py
-          python scripts/validate_simulation_package.py
-          python scripts/audit_design_acceptance.py
           find cad_out -maxdepth 2 -type f -print
           find sim_out -maxdepth 2 -type f -print
 

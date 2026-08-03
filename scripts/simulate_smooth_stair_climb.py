@@ -62,42 +62,50 @@ def _detect_levels(x_mm, y_mm, jump_threshold_mm):
     return runs
 
 
-def _minimum_jerk_blend(t, t0, t1, p0, p1):
-    """Quintic minimum-jerk blend: zero velocity and zero acceleration at both endpoints."""
-    if t1 <= t0:
-        return p1
-    if t <= t0:
-        return p0
-    if t >= t1:
-        return p1
-    s = (t - t0) / (t1 - t0)
-    smooth = 10 * s ** 3 - 15 * s ** 4 + 6 * s ** 5
-    return p0 + (p1 - p0) * smooth
+def _edge_times_s(levels, forward_speed_mps):
+    """Time (s) at which each detected step edge is crossed, at constant forward speed."""
+    return [(levels[k][2] / 1000.0) / forward_speed_mps for k in range(len(levels) - 1)]
 
 
-def _build_transitions(levels, forward_speed_mps, transition_time_s):
-    """Convert detected (value, start_x_mm, end_x_mm) runs into ordered
-    (edge_time_s, value_before, value_after) transition events."""
-    transitions = []
-    for k in range(len(levels) - 1):
-        value_before = levels[k][0]
-        value_after = levels[k + 1][0]
-        edge_x_mm = levels[k][2]
-        edge_t_s = (edge_x_mm / 1000.0) / forward_speed_mps
-        transitions.append((edge_t_s, value_before, value_after))
-    return transitions
+def _min_gap_s(edge_times):
+    if len(edge_times) < 2:
+        return float("inf")
+    return min(edge_times[i + 1] - edge_times[i] for i in range(len(edge_times) - 1))
 
 
-def _position_at(t, initial_level, transitions, transition_time_s):
-    current_value = initial_level
-    for edge_t, before, after in transitions:
-        t0 = edge_t - transition_time_s
-        if t < t0:
-            break
-        if t < edge_t:
-            return _minimum_jerk_blend(t, t0, edge_t, before, after)
-        current_value = after
-    return current_value
+def _smoothing_kernel(window_n):
+    """Normalized weights whose cumulative sum traces a quintic minimum-jerk
+    S-curve: convolving a step function with this kernel reproduces the
+    classic point-to-point minimum-jerk blend for an isolated step, and
+    correctly *superposes* (rather than corrupts) the result when steps are
+    closer together than the window -- unlike placing independent blend
+    windows per step, convolution has no non-overlap assumption to violate."""
+    if window_n <= 1:
+        return [1.0]
+    weights = []
+    for i in range(window_n):
+        s = (i + 0.5) / window_n
+        # d/ds (10s^3 - 15s^4 + 6s^5) = 30 s^2 (1-s)^2
+        weights.append(30.0 * s * s * (1.0 - s) * (1.0 - s))
+    total = sum(weights)
+    return [w / total for w in weights]
+
+
+def _convolve_lookahead(series, kernel):
+    """smoothed[i] = sum_j kernel[j] * series[i+j] -- the kernel looks ahead
+    of i, matching a preview sensor that already knows the upcoming stair
+    geometry. Samples beyond the end of the run hold the last known value."""
+    n = len(series)
+    k = len(kernel)
+    out = [0.0] * n
+    last = series[-1]
+    for i in range(n):
+        acc = 0.0
+        for j in range(k):
+            idx = i + j
+            acc += kernel[j] * (series[idx] if idx < n else last)
+        out[i] = acc
+    return out
 
 
 def _derivative(series, dt_s):
@@ -160,38 +168,44 @@ def main() -> None:
         for k in range(len(levels_by_corner[name]) - 1)
     )
 
-    # Minimum-jerk (quintic) peak velocity for a blend of magnitude dP over
-    # duration T is (15/8) * dP / T. Size T so the *largest* jump stays within
-    # a margin of the screened actuator speed; every smaller jump then also
-    # respects that same margin automatically.
-    transition_time_s = (15.0 / 8.0) * max_jump_mm / (speed_margin * actuator_linear_speed_mm_s)
-    smooth_prestaging_feasible = transition_time_s <= (preview_time_s - control_margin_s)
+    # Minimum-jerk (quintic) peak velocity for an *isolated* blend of
+    # magnitude dP over duration T is (15/8) * dP / T -- use that to size a
+    # window for the largest jump at a margin below rated actuator speed.
+    # But successive corrections for the same corner recur roughly once per
+    # tread; if that natural spacing is *shorter* than the margin-sized
+    # window, cap the window to the tightest real spacing instead (with a 2%
+    # gap) so the two constraints don't fight -- the resulting peak velocity
+    # is then measured for real below, not assumed.
+    speed_margin_window_s = (15.0 / 8.0) * max_jump_mm / (speed_margin * actuator_linear_speed_mm_s)
+    tightest_gap_s = min(_min_gap_s(_edge_times_s(levels_by_corner[name], forward_speed_mps)) for name in wheel_x_offsets_m)
+    spacing_cap_s = 0.98 * tightest_gap_s if tightest_gap_s != float("inf") else float("inf")
+    preview_cap_s = preview_time_s - control_margin_s
+    window_s = min(speed_margin_window_s, spacing_cap_s, preview_cap_s)
 
     dt_s = combined["control_loop_period_ms_ASSUMED"] / 1000.0 * 4.0
     total_time_s = (n_treads * going_m) / forward_speed_mps
     n_time_samples = int(total_time_s / dt_s) + 1
     time_s = [i * dt_s for i in range(n_time_samples)]
+    window_n = max(1, round(window_s / dt_s))
+    kernel = _smoothing_kernel(window_n)
 
     smoothed_by_corner = {}
     raw_time_by_corner = {}
     for name in wheel_x_offsets_m:
-        levels = levels_by_corner[name]
-        transitions = _build_transitions(levels, forward_speed_mps, transition_time_s)
-        initial_level = levels[0][0]
-        smoothed_by_corner[name] = [
-            _position_at(t, initial_level, transitions, transition_time_s) for t in time_s
-        ]
-        # Resample the raw (unsmoothed) signal onto the same time base for a
-        # like-for-like "before" comparison.
+        # Resample the raw (unsmoothed) spatial signal onto the time base first.
         raw_series = raw_by_corner[name]
-        raw_time_by_corner[name] = []
+        raw_time = []
         for t in time_s:
             x_mm = t * forward_speed_mps * 1000.0
             idx = min(int(x_mm / (dx_m * 1000.0)), len(raw_series) - 1)
-            raw_time_by_corner[name].append(raw_series[idx])
+            raw_time.append(raw_series[idx])
+        raw_time_by_corner[name] = raw_time
+        # Convolution superposes overlapping corrections correctly instead of
+        # assuming they never overlap.
+        smoothed_by_corner[name] = _convolve_lookahead(raw_time, kernel)
 
     # Steady-state window: skip the first preview_time_s to avoid a start-up
-    # transient (the very first blend may need to begin before t=0).
+    # transient at the very beginning of the simulated run.
     steady_start_idx = next((i for i, t in enumerate(time_s) if t >= preview_time_s), 0)
 
     per_corner_metrics = {}
@@ -220,12 +234,14 @@ def main() -> None:
 
     velocity_within_actuator_capability = max_smoothed_velocity_mm_s <= actuator_linear_speed_mm_s
     no_position_discontinuity = max_smoothed_step_mm <= tolerance_mm
-    no_crawling = smooth_prestaging_feasible  # forward speed is only ever held
-    # constant (never reduced) if pre-staging finishes inside the preview
-    # budget; if infeasible, the honest conclusion is the chassis would have
-    # to slow down, and "no crawling" is not demonstrated.
+    # Forward speed is never reduced anywhere in this construction -- the
+    # chassis-travel/time mapping is fixed at forward_speed_mps throughout.
+    # That is a structural fact of the model, not a result to gate on; the
+    # real open question is whether the actuator can keep up, which is what
+    # velocity_within_actuator_capability actually measures.
+    forward_speed_held_constant = True
 
-    overall_pass = no_position_discontinuity and velocity_within_actuator_capability and no_crawling
+    overall_pass = no_position_discontinuity and velocity_within_actuator_capability
 
     result = {
         "truth_boundary": (
@@ -237,12 +253,15 @@ def main() -> None:
         ),
         "method": (
             "Reuses the raw per-corner required-extension-vs-position sawtooth from "
-            "analyze_vehicle_requirements.py, converts position to time at the "
-            "assumed constant forward speed, then replaces each instantaneous "
-            "step with a quintic minimum-jerk blend sized to respect a screened "
-            "actuator-speed margin, using the sourced preview sensor's real range "
-            "to justify a multi-tread lookahead window instead of reacting at the "
-            "stair edge."
+            "analyze_vehicle_requirements.py, resamples it onto a time base at the "
+            "assumed constant forward speed, then convolves it with a normalized "
+            "quintic minimum-jerk kernel (the derivative of the classic 10s^3-15s^4"
+            "+6s^5 S-curve) instead of placing independent point-to-point blends -- "
+            "convolution superposes overlapping/closely-spaced corrections correctly "
+            "rather than assuming they never overlap. The kernel window is sized to "
+            "the tightest of: a screened-actuator-speed margin for the largest single "
+            "correction, the real spacing between consecutive corrections for the "
+            "same corner, and the sourced preview sensor's lookahead budget."
         ),
         "inputs": {
             "stair_rise_mm": g["stair_rise_reference_mm"],
@@ -254,7 +273,15 @@ def main() -> None:
             "actuator_speed_margin_fraction_ASSUMED": speed_margin,
             "simulated_tread_count": n_treads,
             "governing_raw_jump_mm": max_jump_mm,
-            "computed_transition_time_s": transition_time_s,
+            "speed_margin_window_s": speed_margin_window_s,
+            "tightest_same_corner_correction_spacing_s": tightest_gap_s,
+            "preview_budget_window_s": preview_cap_s,
+            "window_used_s": window_s,
+            "binding_constraint": (
+                "same_corner_correction_spacing" if window_s == spacing_cap_s
+                else "actuator_speed_margin" if window_s == speed_margin_window_s
+                else "preview_budget"
+            ),
         },
         "per_corner": per_corner_metrics,
         "gates": {
@@ -268,21 +295,52 @@ def main() -> None:
                 "max_smoothed_velocity_mm_s": max_smoothed_velocity_mm_s,
                 "screened_actuator_linear_speed_mm_s": actuator_linear_speed_mm_s,
                 "result": "PASS" if velocity_within_actuator_capability else "FAIL",
+                "note": (
+                    None if velocity_within_actuator_capability else
+                    "The correction cadence required by this stair geometry at the "
+                    "assumed forward speed is tighter than the sourced actuator's "
+                    "rated linear speed can smoothly track. Closes with a faster "
+                    "corner actuator (e.g. higher screw lead or lower gear reduction) "
+                    "-- not by reducing forward speed, which is locked at a 0.2 m/s "
+                    "floor in te_v059_acceptance_criteria.json."
+                ),
             },
-            "no_crawling_constant_forward_speed": {
-                "claim": "Forward speed never has to drop below forward_speed_mps_ASSUMED to let a corner actuator catch up.",
-                "transition_time_s": transition_time_s,
-                "preview_time_budget_s": preview_time_s,
-                "control_loop_margin_s": control_margin_s,
-                "result": "PASS" if no_crawling else "FAIL",
-            },
+        },
+        "forward_speed_held_constant": forward_speed_held_constant,
+        "no_walking_gait": {
+            "claim": (
+                "All four wheels remain in continuous rolling ground contact throughout "
+                "climbing; the corner actuators only adjust vertical height under a wheel "
+                "that never leaves the ground, and forward progress never pauses to lift "
+                "and place a wheel like a leg/foot. This is a continuously-rolling wheeled "
+                "architecture, not a legged/quadruped walking gait."
+            ),
+            "basis": (
+                "Structural, not simulated here: enforced by the locked design constraints "
+                "in data/te_v059_parameters.json (extra_small_wheels=0, tracks=0, belts=0) "
+                "and the corner mechanism architecture in src/terrain_elevate/cad_model.py, "
+                "which drives wheel height via a fixed vertical ball-screw slider, not a "
+                "leg that lifts off and re-plants."
+            ),
         },
         "open_items": [
             "No sourced mechanical or ride-comfort maximum-jerk limit exists yet for "
             "this platform; max_smoothed_jerk_mm_s3 is reported per corner as a "
             "measured quantity, not screened against a threshold. Closes when a "
-            "ride-comfort or actuator-duty-cycle jerk limit is sourced."
-        ],
+            "ride-comfort or actuator-duty-cycle jerk limit is sourced.",
+        ]
+        + (
+            []
+            if velocity_within_actuator_capability
+            else [
+                "velocity_within_actuator_capability is FAIL: the sourced corner "
+                "actuator is not fast enough to track this stair geometry's "
+                "correction cadence at the assumed 0.2 m/s climb speed without "
+                "exceeding its rated linear speed. Closes by sourcing a "
+                "higher-lead ball screw or lower corner-actuator gear reduction "
+                "and re-running this screen, not by silently reducing forward speed."
+            ]
+        ),
         "result": "PASS" if overall_pass else "FAIL",
     }
 
@@ -306,8 +364,10 @@ def main() -> None:
     (out_dir / "Terrain_Elevate_P1_V0_59_smooth_climb_trajectory.csv").write_text("\n".join(csv_lines) + "\n")
 
     print(json.dumps(result, indent=2))
-    if not overall_pass:
-        raise SystemExit(1)
+    # Intentionally does not raise on FAIL: like wheel_propulsion_screen in
+    # analyze_vehicle_requirements.py, an honest FAIL here is real, useful
+    # information (the sourced actuator's speed is the governing constraint),
+    # not a build error to hide by exiting nonzero.
 
 
 if __name__ == "__main__":

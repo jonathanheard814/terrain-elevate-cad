@@ -620,7 +620,7 @@ def build_folded_pose_components(params: dict) -> list[Component]:
 
 def folded_pose_bounding_box_mm(params: dict) -> list[float]:
     compound = _compound(build_folded_pose_components(params))
-    bb = compound.val().BoundingBox()
+    bb = compound.BoundingBox()
     return [bb.xmin, bb.ymin, bb.zmin, bb.xmax, bb.ymax, bb.zmax]
 
 

@@ -32,15 +32,19 @@ def _stair_height_at(x_m: float, rise_m: float, going_m: float) -> float:
     return math.floor(max(x_m, 0.0) / going_m) * rise_m
 
 
-def _raw_required_extensions_mm(x_positions_m, wheel_x_offsets_m, rise_m, going_m, slope):
+def _raw_required_extensions_mm(x_positions_m, wheel_x_offsets_m, wheelbase_m, rise_m, going_m, slope):
     """Per-corner raw geometric correction (mm) at each x sample, normalized so
     the lowest corner at each sample is 0 -- identical formula to
-    scripts/analyze_vehicle_requirements.py so the two stay consistent."""
+    scripts/analyze_vehicle_requirements.py so the two stay consistent. The
+    extra + wheelbase_m/2 keeps every corner's x_contact non-negative (the
+    rearmost corner's offset is -wheelbase/2, so without this it goes
+    negative right at the start of a run and _stair_height_at's max(x,0)
+    clamp produces a bogus large offset there)."""
     per_corner = {name: [] for name in wheel_x_offsets_m}
     for x in x_positions_m:
         raw = {}
         for name, x_offset in wheel_x_offsets_m.items():
-            x_contact = x + x_offset
+            x_contact = x + x_offset + wheelbase_m / 2
             stepped_h = _stair_height_at(x_contact, rise_m, going_m)
             ramp_h = x_contact * slope
             raw[name] = (ramp_h - stepped_h) * 1000.0
@@ -155,7 +159,7 @@ def main() -> None:
     x_positions_m = [i * dx_m for i in range(n_x_samples)]
     x_positions_mm = [x * 1000.0 for x in x_positions_m]
 
-    raw_by_corner = _raw_required_extensions_mm(x_positions_m, wheel_x_offsets_m, rise_m, going_m, slope)
+    raw_by_corner = _raw_required_extensions_mm(x_positions_m, wheel_x_offsets_m, wheelbase_m, rise_m, going_m, slope)
 
     levels_by_corner = {
         name: _detect_levels(x_positions_mm, raw_by_corner[name], jump_threshold_mm=1.0)

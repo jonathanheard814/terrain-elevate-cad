@@ -1,0 +1,55 @@
+{
+  "truth_boundary": "Engineering sizing screen for CAD completeness. Not certification, FEA, dynamic contact simulation, or physical validation.",
+  "mass_assumptions": {
+    "child_mass_kg_ASSUMED": 22.0,
+    "stroller_mass_kg_ASSUMED": 38.0,
+    "cargo_mass_kg_ASSUMED": 5.0,
+    "total_operating_mass_kg_ASSUMED": 65.0,
+    "heavy_design_screen_mass_kg_ASSUMED": 100.0
+  },
+  "dynamic_factors": {
+    "static_margin_factor": 1.5,
+    "stair_edge_dynamic_factor": 3.0,
+    "one_corner_overload_fraction": 0.45,
+    "two_corner_overload_fraction": 0.70
+  },
+  "actuator_assumptions": {
+    "screw_efficiency_ASSUMED": 0.85,
+    "gearbox_efficiency_ASSUMED": 0.95,
+    "motor_nominal_torque_Nm_SRC": 1.02,
+    "motor_nominal_speed_rpm_SRC": 3990.0,
+    "gear_ratio_ASSUMED": 3.9,
+    "holding_brake_safety_factor": 3.0
+  },
+  "wheel_assumptions": {
+    "rolling_efficiency_ASSUMED": 0.75,
+    "minimum_traction_mu_ASSUMED": 0.65,
+    "wheel_torque_safety_factor": 2.0
+  },
+  "pod_leveling_assumptions": {
+    "pod_child_cargo_mass_kg_ASSUMED": 35.0,
+    "cg_offset_from_pitch_axis_mm_ASSUMED": 150.0,
+    "actuator_moment_arm_mm_ASSUMED": 150.0,
+    "actuator_count": 2,
+    "pod_actuator_safety_factor": 3.0,
+    "selected_actuator_family_SRC": "Thomson Electrak MD MDxxA200",
+    "selected_actuator_dynamic_load_N_SRC": 2000.0,
+    "selected_actuator_max_stroke_mm_SRC": 300.0
+  },
+  "joint_and_linkage_assumptions": {
+    "selected_rod_end_family_SRC": "Aurora AM-M10T metric male PTFE-lined rod end",
+    "selected_rod_end_ball_bore_mm_SRC": 10.0,
+    "selected_rod_end_static_radial_capacity_N_SRC": 50227.0,
+    "rod_end_count_sharing_governing_corner_load_ASSUMED": 2,
+    "rod_end_safety_factor": 3.0,
+    "selected_lock_nut_family_SRC": "DIN 985 / ISO 10511 prevailing torque lock nut"
+  },
+  "combined_climb_assumptions": {
+    "stair_climb_forward_speed_mps_ASSUMED": 0.2,
+    "control_loop_period_ms_ASSUMED": 0.5,
+    "sensor_process_period_ms_ASSUMED": 5.0,
+    "local_drive_suspension_loop": "Sub-millisecond motor/suspension command loop; preview sensors feed a predictive stair phase map and are not waited on at the stair edge.",
+    "control_mode": "Sensor-previewed predictive corner prepositioning plus sub-millisecond local wheel torque and suspension control; not wheel-only climbing.",
+    "minimum_preview_distance_fraction_of_going": 1.0
+  }
+}

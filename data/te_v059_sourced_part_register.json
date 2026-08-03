@@ -1,0 +1,186 @@
+{
+  "truth_boundary": "Sourced part register for the V0.59 simulation-ready prototype CAD. Exact catalog items are used where the supplier publishes a stable part number. Configured-to-order items are real supplier products but require final ordering configuration from the manufacturer/distributor.",
+  "selection_rule": "No pretend part numbers. Every modeled hardware family must be exact catalog, configured-to-order, or an industry standard with the reason and governing requirement stated.",
+  "parts": [
+    {
+      "id": "corner_ball_screw",
+      "selection": "THK BNK2010-2.5RRG2+499LC7Y",
+      "source_status": "exact_catalog_part",
+      "requirement": "Four independent corner actuators need at least 238.2 mm stroke with reserve for 203.2 mm stair rise phase correction.",
+      "reason_selected": "300 mm listed stroke gives 61.8 mm margin over the corrected minimum stroke; 10 mm lead improves vertical speed so stair-phase correction can be previewed and commanded without forcing the user to pause.",
+      "key_specs": {"stroke_mm": 300, "shaft_length_mm": 499, "shaft_diameter_mm": 20, "lead_mm": 10, "dynamic_rating_kN": 11.1, "static_rating_kN": 22.0},
+      "cad_representation": "One ball screw shaft, ballnut carriage, thrust/support blocks, and stroke datum per corner."
+    },
+    {
+      "id": "corner_linear_guides",
+      "selection": "THK HSR15C blocks on HSR15 rail",
+      "source_status": "catalog_series_configured_length",
+      "requirement": "Each moving ballnut carriage needs anti-rotation guidance and vertical load support over 300 mm travel.",
+      "reason_selected": "HSR15C has compact 15 mm rail class geometry with published block dimensions and kN-class load ratings far above the screening corner loads.",
+      "key_specs": {"block_height_mm": 24, "block_width_mm": 47, "block_length_mm": 56.6, "dynamic_rating_kN": 10.9, "static_rating_kN": 15.7, "rail_length_modeled_mm": 400},
+      "cad_representation": "Two vertical guide rails and two carriage blocks per corner."
+    },
+    {
+      "id": "corner_actuator_motor",
+      "selection": "maxon EC-i 52 part 633919",
+      "source_status": "exact_catalog_part",
+      "requirement": "Ball screw drive must produce at least 1323.9 N governing screened corner force and enough speed for previewed stair-phase prepositioning.",
+      "reason_selected": "420 W EC-i 52 motor with 1.02 Nm nominal torque and 3990 rpm nominal speed gives both force margin and high screw speed for smooth no-break-stride stair phase correction.",
+      "key_specs": {"nominal_power_W": 420, "nominal_voltage_V": 48, "nominal_torque_Nm": 1.02, "nominal_speed_rpm": 3990, "diameter_mm": 52},
+      "cad_representation": "One actuator motor envelope per corner in the screw-drive stack."
+    },
+    {
+      "id": "corner_actuator_gearhead",
+      "selection": "maxon GPX52 UP configurable planetary gearhead, 3.9:1 one-stage target ratio",
+      "source_status": "configured_to_order_catalog_product",
+      "requirement": "Increase EC-i 52 torque while preserving high output speed for near-continuous 300 mm screw positioning.",
+      "reason_selected": "3.9:1 ratio with 95 percent published peak efficiency screens to approximately 2369 N screw axial capacity and 170.5 mm/s linear screw speed, enough for 0.2 m/s stair approach with previewed pre-positioning.",
+      "key_specs": {"target_ratio": 3.9, "modeled_diameter_mm": 52, "modeled_length_mm": 50.2, "screened_efficiency": 0.95, "max_continuous_torque_Nm": 7.5, "max_input_speed_rpm": 6000},
+      "cad_representation": "One GPX52-class gearhead cylinder per corner."
+    },
+    {
+      "id": "motor_to_screw_coupling_and_collars",
+      "selection": "Ruland clamp-style shaft collars and configured flexible beam/zero-backlash coupling sized to GPX52 output and BNK2010 screw end",
+      "source_status": "configured_to_order_catalog_product",
+      "requirement": "The motor/gearhead must physically transmit torque coaxially into the vertical ball screw without pretending an unmodeled right-angle drive exists.",
+      "reason_selected": "Clamp-style collars and flexible couplings are purchasable machine components for shaft location, alignment tolerance, and serviceable motor-to-screw torque transfer.",
+      "key_specs": {"screw_shaft_diameter_mm": 20, "coupling_type": "clamp-style flexible coupling", "collar_type": "clamp style shaft collar"},
+      "cad_representation": "Coaxial motor mount plate, flexible coupling, and screw shaft collar above each ball screw."
+    },
+    {
+      "id": "corner_holding_brake",
+      "selection": "maxon AB 44 24 VDC 2.5 Nm brake, part 386054",
+      "source_status": "exact_catalog_part_for_compatible_maxon_combination",
+      "requirement": "Hold the screw actuator without backdrive when unpowered; braking is motor-side through the gear reduction.",
+      "reason_selected": "2.5 Nm holding torque exceeds the calculated 0.331 Nm motor-side holding requirement with safety factor; smaller and more plausible than the prior AB60 choice.",
+      "key_specs": {"holding_torque_Nm": 2.5, "diameter_mm": 44, "length_mm": 26.9, "voltage_VDC": 24, "max_speed_rpm": 10000},
+      "cad_representation": "One AB44 brake envelope per corner in the motor-side actuator stack."
+    },
+    {
+      "id": "pod_pitch_actuators",
+      "selection": "Thomson Electrak MD, MDxxA200 configured 300 mm stroke / 2000 N class",
+      "source_status": "configured_to_order_catalog_product",
+      "requirement": "Occupant pod must correct at least 36.03 degrees relative to the pitched stair-climbing chassis.",
+      "reason_selected": "Two 2000 N class actuators exceed the 514.9 N per-actuator screening force with safety factor and provide a compact sealed electric actuation path.",
+      "key_specs": {"selected_dynamic_load_N": 2000, "selected_stroke_mm": 300, "supported_voltages": "12/24/48 V family"},
+      "cad_representation": "Two pod pitch actuator bodies, extension tubes, clevis pins, hard stops, and positive level lock."
+    },
+    {
+      "id": "wheel_drive_motor_gearbox",
+      "selection": "Dunkermotoren BG75 dMove with PLG75 planetary gearbox configured for wheel torque target",
+      "source_status": "configured_to_order_catalog_product",
+      "requirement": "Four powered wheels provide controlled forward motion and torque redistribution while corner actuators perform stair-height rampification.",
+      "reason_selected": "BG75 dMove class provides high continuous power and CANopen-capable drive integration; PLG75 family supports high continuous torque configurations.",
+      "key_specs": {"screened_per_wheel_torque_Nm": 53.8, "BG75_dMove_power_W_up_to": 810, "PLG_family_torque_Nm_up_to": 130},
+      "cad_representation": "One wheel drive motor and planetary gearbox envelope at each wheel module."
+    },
+    {
+      "id": "stair_preview_distance_sensor",
+      "selection": "ifm O1D100 IO-Link photoelectric distance sensor",
+      "source_status": "exact_catalog_part",
+      "requirement": "Preview stair tread/riser geometry so corners can pre-position before contact.",
+      "reason_selected": "0.2 to 10 m measuring range, IO-Link, IP67 housing, and M12 connection fit the preview/control requirement without adding wheels/tracks/belts.",
+      "key_specs": {"measuring_range_m": "0.2-10", "protection": "IP67", "connector": "M12 A-coded 5 pin", "dimensions_mm": [59, 42, 52]},
+      "cad_representation": "Front/rear depth sensor bodies and bridge brackets."
+    },
+    {
+      "id": "corner_position_sensor",
+      "selection": "Novotechnik TF1 inductive linear position sensor, IO-Link or CANopen configuration",
+      "source_status": "configured_to_order_catalog_product",
+      "requirement": "Each independent corner actuator needs closed-loop vertical position feedback over 300 mm stroke.",
+      "reason_selected": "Touchless absolute linear sensing, IP67, 100-1000 mm ranges, and industrial digital interfaces fit the corner actuator environment.",
+      "key_specs": {"range_mm": "100-1000", "protection": "IP67", "interfaces": ["IO-Link", "CANopen", "SSI", "Voltage", "Current"]},
+      "cad_representation": "One linear scale and one read head per corner."
+    },
+    {
+      "id": "wheel_angle_speed_sensor",
+      "selection": "Novotechnik RFC-4800 non-contact 360 degree angle sensor, sealed configuration",
+      "source_status": "configured_to_order_catalog_product",
+      "requirement": "Each powered wheel needs speed/position feedback for smooth low-speed stair approach and torque coordination.",
+      "reason_selected": "Sealed non-contact 360 degree sensor with IP67/IP68/IP69 options is more physical for this environment than a bare encoder IC.",
+      "key_specs": {"range_deg": 360, "protection_options": ["IP67", "IP68", "IP69"], "interfaces": ["CANopen", "IO-Link", "SSI", "SPI", "Voltage", "Current"]},
+      "cad_representation": "Magnetic target ring, pickup bracket, and sealed sensor package at each wheel."
+    },
+    {
+      "id": "load_sensing_pins",
+      "selection": "Strainsert CPA/CBA load pins/bolts, custom-sized to pivot geometry",
+      "source_status": "configured_to_order_real_product",
+      "requirement": "Detect corner load sharing, stair contact, and one-wheel events so the controller can command whole-stroller response.",
+      "reason_selected": "Load pins replace clevis/shear pins directly, matching the suspension pivot architecture without adding extra mechanisms.",
+      "key_specs": {"type": "strain-gage load pin/bolt", "custom_geometry_required": true},
+      "cad_representation": "Load-sensing pin elements and local signal-conditioning modules at each corner."
+    },
+    {
+      "id": "power_connectors",
+      "selection": "TE Connectivity DEUTSCH DTP connector family",
+      "source_status": "catalog_family_exact_shell_selected_at_harness_release",
+      "requirement": "High-current sealed power branch connection to each wheel/corner module.",
+      "reason_selected": "DTP accepts size 12 contacts rated 25 A and 10-14 AWG wiring in sealed rugged housings.",
+      "key_specs": {"contact_rating_A": 25, "wire_range_AWG": "10-14", "positions": "2 or 4"},
+      "cad_representation": "DTP power connector bodies at each corner."
+    },
+    {
+      "id": "signal_connectors",
+      "selection": "TE Connectivity DEUTSCH DT connector family",
+      "source_status": "catalog_family_exact_shell_selected_at_harness_release",
+      "requirement": "Sealed signal connection for sensors, local controllers, and safety interlocks.",
+      "reason_selected": "DT accepts size 16 contacts rated 13 A and supports sealed multi-position rugged signal harnesses.",
+      "key_specs": {"contact_rating_A": 13, "wire_range_AWG": "14-20", "positions": [2, 3, 4, 6, 8, 12]},
+      "cad_representation": "DT signal connector bodies at each corner and sensor branch."
+    },
+    {
+      "id": "sensor_circular_connectors",
+      "selection": "TE M12 IP67 rail/industrial cable connector family",
+      "source_status": "catalog_family",
+      "requirement": "Sensor connections need sealed M12-style field-serviceable cabling.",
+      "reason_selected": "M12 family provides IP67 sealing, vibration-resistant strain relief, and compact field-assembly options.",
+      "key_specs": {"protection": "IP67", "mating_cycles_up_to": 500, "diameter_mm": 15.2},
+      "cad_representation": "Sensor connector blocks, conduits, and strain-relief mounts."
+    },
+    {
+      "id": "fuse_holders",
+      "selection": "Littelfuse MIDI 498 fuse holder 04980923ZXT",
+      "source_status": "exact_catalog_part",
+      "requirement": "Protect left/right high-current drive branches.",
+      "reason_selected": "MIDI 498 holder supports 58 V systems with 150 A continuous / 200 A max holder class for branch protection packaging.",
+      "key_specs": {"voltage_rating_V": 58, "continuous_current_A": 150, "max_current_A": 200},
+      "cad_representation": "Left and right branch fuse blocks."
+    },
+    {
+      "id": "pivot_bushings_bearings",
+      "selection": "igus iglidur G bushings and igubal EGLM-25 spherical bearing family",
+      "source_status": "catalog_parts_selected_by_final bore/length at release",
+      "requirement": "Suspension pivots need dirty-environment tolerant, low-maintenance bearing surfaces and 25 mm misalignment support.",
+      "reason_selected": "iglidur G and igubal are dry-running polymer bearing families suited to dirt/dust and low-speed oscillating pivots.",
+      "key_specs": {"eglm_bore_mm": 25, "iglidur_g_compressive_strength_MPa": 78},
+      "cad_representation": "Bushing sleeves at link pins and 25 mm pivot bearing envelopes."
+    },
+    {
+      "id": "wheel_hub_bearings",
+      "selection": "SKF 6002-2RS1 sealed deep groove ball bearing or equivalent 6002-2RS bearing",
+      "source_status": "industry_standard_catalog_part",
+      "requirement": "Each wheel hub needs sealed radial bearing support around the live axle.",
+      "reason_selected": "6002-2RS class provides common sealed 15 x 32 x 9 mm bearing geometry appropriate for the modeled compact hub stack.",
+      "key_specs": {"bore_mm": 15, "outer_diameter_mm": 32, "width_mm": 9},
+      "cad_representation": "Inner and outer sealed hub bearings per wheel."
+    },
+    {
+      "id": "fasteners",
+      "selection": "ISO 4762 socket-head cap screws; DIN 985 / ISO 10511 lock nuts; flat washers",
+      "source_status": "industry_standard_parts",
+      "requirement": "All plates, guide rails, thrust blocks, clevises, brackets, electronics, and sensor mounts need physical retention hardware.",
+      "reason_selected": "Standard metric fasteners are globally purchasable and match the modeled serviceable bolted architecture.",
+      "key_specs": {"modeled_sizes": ["M3", "M5", "M6", "M8", "M10"], "structural_grade_target": "12.9 for critical socket-head screws"},
+      "cad_representation": "Individual shanks, heads, washers, locknuts, and jam nuts across the assembly."
+    },
+    {
+      "id": "wire_retention",
+      "selection": "HellermannTyton HDM312 heavy-duty cable tie mounts and TY-series small cable tie mounts",
+      "source_status": "exact/catalog_family",
+      "requirement": "Harnesses need strain relief and serviceable retention at moving corners and sensor branches.",
+      "reason_selected": "Heavy-duty and compact screw/adhesive cable tie mounts are purchasable, UV-resistant polymer retention hardware.",
+      "key_specs": {"HDM312_mount_hole_mm": 7.8, "HDM312_length_mm": 36.3, "TY3G1S_length_mm": 20, "TY3G1S_width_mm": 14},
+      "cad_representation": "Harness conduit loops, strain-relief modules, and connector mounting plates."
+    }
+  ]
+}

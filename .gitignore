@@ -1,0 +1,5 @@
+cad_out/
+sim_out/
+__pycache__/
+*.pyc
+.venv/

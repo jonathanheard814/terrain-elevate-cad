@@ -1,0 +1,46 @@
+{
+  "intent": "The build should accurately deliver a portable CAD plus simulation-ready stair-climbing prototype model, not merely a bundle of files.",
+  "required_outputs": [
+    "detailed_1300_plus_body_step_for_solidworks",
+    "stair_climb_pose_step_showing_36_degree_chassis_and_level_pod_architecture",
+    "matlab_load_script",
+    "urdf_with_9_commanded_dof",
+    "cad_derived_link_meshes",
+    "connectivity_audit_zero_floating_parts",
+    "physics_requirement_screen",
+    "combined_ramp_like_stair_climb_screen",
+    "1001_sample_stair_phase_actuator_sweep",
+    "sub_millisecond_local_drive_suspension_control_target",
+    "physics_basis_json_with_contact_actuator_sensor_control_parameters",
+    "physics_basis_audit_using_installed_simulation_math_libraries"
+  ],
+  "minimums": {
+    "cad_body_count": 1300,
+    "connectivity_largest_group_fraction": 1.0,
+    "isolated_components": 0,
+    "outside_main_group_components": 0,
+    "commanded_dof": 9,
+    "corner_prismatic_joints": 4,
+    "wheel_drive_joints": 4,
+    "pod_pitch_joints": 1,
+    "simulation_link_meshes_from_cad": true,
+    "combined_ramp_like_climb": true,
+    "minimum_combined_climb_forward_speed_mps": 0.2,
+    "maximum_local_control_loop_ms": 0.5,
+    "maximum_compute_sensor_latency_ms": 6.0,
+    "main_ground_contact_wheels": 4,
+    "extra_wheels": 0,
+    "belts": 0,
+    "tracks": 0
+  },
+  "required_truths": [
+    "Mobility chassis follows stair angle instead of staying flat.",
+    "Occupant pod has independent pitch-leveling joint.",
+    "Four corners remain independently actuated.",
+    "The architecture uses exactly four main wheels with no crawler tracks, no belts, and no added helper wheels.",
+    "Wheel-only stair climbing traction is not claimed as the stair-climb mechanism.",
+    "The combined wheel-drive, independent-corner-actuator, pitched-chassis, pod-leveling system must pass the ramp-like stair-climb screen.",
+    "Local wheel/suspension command loops must target sub-millisecond update timing; preview sensors feed prediction and must not create wait-at-edge behavior.",
+    "Simulation model is simplified for dynamics but derived from detailed CAD geometry."
+  ]
+}

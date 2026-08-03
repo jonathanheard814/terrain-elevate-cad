@@ -178,7 +178,7 @@ def build_corner(code, sx, sy):
 
     add_box(part, code+"_SUSP_tower_cassette", (tower_x,y,505), (88,76,430), "61", "suspension tower load path")
     add_joint_marker(part, code+"_JOINT_AXIS_SWING_ARM_PIVOT_Y", "Y", (x-sx*104,y,310), 170, "60", "swing arm pivot datum")
-    add_cylinder(part, code+"_SUSP_pivot_shaft_25mm_OPEN", "Y", (x-sx*104,y,310), G["pivot_diameter_mm_OPEN"]/2, 170, "60", "pivot shaft candidate")
+    add_cylinder(part, code+"_SUSP_swingarm_pivot_shaft_25mm", "Y", (x-sx*104,y,310), G["swingarm_pivot_diameter_mm"]/2, 170, "60", "25 mm swingarm pivot shaft")
     add_box(part, code+"_SUSP_boxed_swing_arm_lower", (x-sx*70,y,310), (230,40,36), "60", "boxed lower swing arm")
     add_box(part, code+"_SUSP_upper_reaction_link", (x-sx*68,y,452), (205,30,30), "60", "upper reaction link")
     add_cylinder(part, code+"_SUSP_passive_spring_damper", "Z", (tower_x+sx*40,y,508), 18, 270, "61", "passive spring/damper envelope")

@@ -1,0 +1,14 @@
+{
+  "audit_method": "Axis-aligned bounding-box contact graph with 8 mm assembly tolerance; flags parts not geometrically connected to the main mechanism.",
+  "component_count": 1457,
+  "largest_connected_group_count": 1457,
+  "largest_connected_group_fraction": 1.0,
+  "connected_group_sizes": [
+    1457
+  ],
+  "isolated_component_count": 0,
+  "isolated_components": [],
+  "outside_largest_group_count": 0,
+  "outside_largest_group_components": [],
+  "result": "PASS"
+}

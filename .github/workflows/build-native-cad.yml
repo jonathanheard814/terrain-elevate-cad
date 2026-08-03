@@ -2,48 +2,104 @@ name: Build Terrain Elevate Native CAD
 
 on:
   workflow_dispatch:
-  push:
+  pull_request:
     paths:
-      - "build_te_v059_freecad.py"
+      - "scripts/build_occt_cad.py"
+      - "scripts/analyze_vehicle_requirements.py"
+      - "scripts/audit_assembly_connectivity.py"
+      - "scripts/export_simulation_package.py"
+      - "scripts/validate_simulation_package.py"
+      - "scripts/generate_matlab_package.py"
+      - "scripts/audit_design_acceptance.py"
+      - "scripts/audit_physics_basis.py"
+      - "src/terrain_elevate/**"
       - "validate_outputs.py"
       - "data/te_v059_parameters.json"
+      - "data/te_v059_load_cases.json"
+      - "data/te_v059_mass_properties.json"
+      - "data/te_v059_sourced_part_register.json"
+      - "data/te_v059_physics_elements.json"
+      - "requirements-cad.txt"
+      - "requirements-sim.txt"
+      - ".github/workflows/build-native-cad.yml"
+  push:
+    paths:
+      - "scripts/build_occt_cad.py"
+      - "scripts/analyze_vehicle_requirements.py"
+      - "scripts/audit_assembly_connectivity.py"
+      - "scripts/export_simulation_package.py"
+      - "scripts/validate_simulation_package.py"
+      - "scripts/generate_matlab_package.py"
+      - "scripts/audit_design_acceptance.py"
+      - "scripts/audit_physics_basis.py"
+      - "src/terrain_elevate/**"
+      - "validate_outputs.py"
+      - "data/te_v059_parameters.json"
+      - "data/te_v059_load_cases.json"
+      - "data/te_v059_mass_properties.json"
+      - "data/te_v059_sourced_part_register.json"
+      - "data/te_v059_physics_elements.json"
+      - "requirements-cad.txt"
+      - "requirements-sim.txt"
       - ".github/workflows/build-native-cad.yml"
 
 jobs:
-  build-step:
+  build-occt-cad:
     runs-on: ubuntu-22.04
     timeout-minutes: 45
 
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install FreeCAD/OpenCascade
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y freecad
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
 
-      - name: Build native CAD
+      - name: Install OCCT CAD stack
         run: |
-          mkdir -p scripts
-          cp build_te_v059_freecad.py scripts/build_te_v059_freecad.py
-          mkdir -p cad_out
-          if command -v freecadcmd >/dev/null 2>&1; then
-            freecadcmd scripts/build_te_v059_freecad.py
-          else
-            FreeCADCmd scripts/build_te_v059_freecad.py
-          fi
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements-cad.txt
+          python -m pip install -r requirements-sim.txt
+
+      - name: Build Fusion-ready prototype CAD
+        run: |
+          python scripts/analyze_vehicle_requirements.py
+          python scripts/build_occt_cad.py
+          python scripts/export_simulation_package.py
+          python scripts/generate_matlab_package.py
 
       - name: Validate outputs
         run: |
-          python3 validate_outputs.py
+          python validate_outputs.py
+          python scripts/audit_assembly_connectivity.py
+          python scripts/audit_physics_basis.py
+          python scripts/validate_simulation_package.py
+          python scripts/audit_design_acceptance.py
           find cad_out -maxdepth 2 -type f -print
+          find sim_out -maxdepth 2 -type f -print
 
       - name: Upload Fusion-ready CAD files
         uses: actions/upload-artifact@v4
         with:
-          name: TerrainElevate-P1-V059-Fusion-Ready
+          name: TerrainElevate-P1-V059-OCCT-Fusion-Ready
           path: |
-            cad_out/Terrain_Elevate_V0_59.step
-            cad_out/Terrain_Elevate_V0_59_native.FCStd
-            cad_out/Terrain_Elevate_V0_59_manifest.json
+            cad_out/Terrain_Elevate_P1_V0_59_OCCT.step
+            cad_out/Terrain_Elevate_P1_V0_59_OCCT.stl
+            cad_out/Terrain_Elevate_P1_V0_59_stair_climb_pose.step
+            cad_out/Terrain_Elevate_P1_V0_59_stair_climb_pose.stl
+            cad_out/Terrain_Elevate_P1_V0_59_package.dxf
+            cad_out/Terrain_Elevate_P1_V0_59_manifest.json
+            analysis_out/Terrain_Elevate_P1_V0_59_requirements_screen.json
+            analysis_out/Terrain_Elevate_P1_V0_59_stair_phase_actuator_sweep.csv
+            analysis_out/Terrain_Elevate_P1_V0_59_connectivity_audit.json
+            analysis_out/Terrain_Elevate_P1_V0_59_physics_basis_audit.json
+            analysis_out/Terrain_Elevate_P1_V0_59_design_acceptance_audit.json
+            data/te_v059_sourced_part_register.json
+            data/te_v059_physics_elements.json
+            sim_out/Terrain_Elevate_P1_V0_59_sim.urdf
+            sim_out/Terrain_Elevate_P1_V0_59_joint_graph.json
+            sim_out/load_terrain_elevate_matlab.m
+            sim_out/MATLAB_SOLIDWORKS_IMPORT_NOTES.json
+            sim_out/meshes/*.stl
           if-no-files-found: error

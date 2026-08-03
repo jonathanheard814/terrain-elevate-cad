@@ -48,7 +48,7 @@ jobs:
       - name: Package CAD outputs
         run: |
           set -euxo pipefail
-          zip -r cad_out/Terrain_Elevate_V0_59_CAD_outputs.zip cad_out docs data scripts             -x 'cad_out/Terrain_Elevate_V0_59_CAD_outputs.zip'
+          zip -r cad_out/Terrain_Elevate_V0_59_CAD_outputs.zip cad_out data scripts -x 'cad_out/Terrain_Elevate_V0_59_CAD_outputs.zip'
 
       - name: Upload CAD artifact
         uses: actions/upload-artifact@v4

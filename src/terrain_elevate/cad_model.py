@@ -73,6 +73,23 @@ def _soft_box(name: str, role: str, callout: str, center, size, radius: float = 
     return Component(name, role, callout, solid.translate(center), _infer_material(name, role, callout, material))
 
 
+def _shell_box(name: str, role: str, callout: str, center, size, wall_mm: float, radius: float = 8.0, material: str | None = None) -> Component:
+    """A real hollow cover panel: an outer filleted box minus a smaller
+    inner box, leaving a wall of thickness wall_mm -- a genuinely buildable
+    thin-walled shell (composite/sheet-metal cover), not a solid block
+    standing in for one."""
+    ox, oy, oz = size
+    outer = cq.Workplane("XY").box(ox, oy, oz)
+    try:
+        outer = outer.edges().fillet(radius)
+    except Exception:
+        pass
+    inner_size = (max(ox - 2 * wall_mm, 1.0), max(oy - 2 * wall_mm, 1.0), max(oz - 2 * wall_mm, 1.0))
+    inner = cq.Workplane("XY").box(*inner_size)
+    solid = outer.cut(inner)
+    return Component(name, role, callout, solid.translate(center), _infer_material(name, role, callout, material))
+
+
 def _cylinder(name: str, role: str, callout: str, center, radius: float, length: float, axis: str, material: str | None = None) -> Component:
     solid = cq.Workplane("XY").cylinder(length, radius)
     if axis == "X":
@@ -452,6 +469,24 @@ def _add_corner(components: list[Component], g: dict, code: str, sx: int, sy: in
             _soft_box(prefix + "harness_backbone_standoff_lower", f"{side} {lr} lower harness rail standoff to tower cassette", "67/68/69", (tower_x + sx * 48, y + sy * 58, 426), (118, 128, 18), 3, material="steel"),
             _gusset(prefix + "tower_frame_gusset", f"{side} {lr} triangular tower to rail gusset", "61", (tower_x + sx * 42, y, 375), 165, 160, 8, sx),
         ]
+    )
+
+    # Enclosed corner shroud: the fixed (non-steering) ball-screw/motor/
+    # gearhead/brake stack is otherwise a stack of bare cylinders/boxes.
+    # This is a real hollow cover panel (see _shell_box), not decoration --
+    # anti-pinch guarding around the moving ballnut carriage, and weather/
+    # debris sealing over the exposed screw and motor stack.
+    components.append(
+        _shell_box(
+            prefix + "corner_tower_shroud",
+            f"{side} {lr} weather/anti-pinch cover over the corner actuator stack",
+            "61/62/64/65/66",
+            (tower_x, y, 630),
+            (180, 180, 720),
+            4.0,
+            50.0,
+            material="dark_aluminum",
+        )
     )
 
     for motor_bolt_idx, (mx, my) in enumerate(((-28, -28), (-28, 28), (28, -28), (28, 28))):

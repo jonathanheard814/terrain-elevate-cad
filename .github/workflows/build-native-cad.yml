@@ -13,6 +13,7 @@ on:
       - "scripts/generate_matlab_package.py"
       - "scripts/audit_design_acceptance.py"
       - "scripts/audit_physics_basis.py"
+      - "scripts/audit_power_budget.py"
       - "src/terrain_elevate/**"
       - "validate_outputs.py"
       - "data/te_v059_parameters.json"
@@ -20,6 +21,7 @@ on:
       - "data/te_v059_mass_properties.json"
       - "data/te_v059_sourced_part_register.json"
       - "data/te_v059_physics_elements.json"
+      - "data/te_v059_electrical_system.json"
       - "requirements-cad.txt"
       - "requirements-sim.txt"
       - ".github/workflows/build-native-cad.yml"
@@ -34,6 +36,7 @@ on:
       - "scripts/generate_matlab_package.py"
       - "scripts/audit_design_acceptance.py"
       - "scripts/audit_physics_basis.py"
+      - "scripts/audit_power_budget.py"
       - "src/terrain_elevate/**"
       - "validate_outputs.py"
       - "data/te_v059_parameters.json"
@@ -41,6 +44,7 @@ on:
       - "data/te_v059_mass_properties.json"
       - "data/te_v059_sourced_part_register.json"
       - "data/te_v059_physics_elements.json"
+      - "data/te_v059_electrical_system.json"
       - "requirements-cad.txt"
       - "requirements-sim.txt"
       - ".github/workflows/build-native-cad.yml"
@@ -70,6 +74,7 @@ jobs:
           python scripts/simulate_smooth_stair_climb.py
           python scripts/build_occt_cad.py
           python scripts/audit_fold_envelope.py
+          python scripts/audit_power_budget.py
           python scripts/export_simulation_package.py
           python scripts/generate_matlab_package.py
 
@@ -108,6 +113,9 @@ jobs:
             analysis_out/Terrain_Elevate_P1_V0_59_stair_phase_actuator_sweep.csv
             analysis_out/Terrain_Elevate_P1_V0_59_smooth_climb_audit.json
             analysis_out/Terrain_Elevate_P1_V0_59_smooth_climb_trajectory.csv
+            analysis_out/Terrain_Elevate_P1_V0_59_fold_envelope_audit.json
+            analysis_out/Terrain_Elevate_P1_V0_59_power_budget_audit.json
+            data/te_v059_electrical_system.json
             analysis_out/Terrain_Elevate_P1_V0_59_connectivity_audit.json
             analysis_out/Terrain_Elevate_P1_V0_59_physics_basis_audit.json
             analysis_out/Terrain_Elevate_P1_V0_59_design_acceptance_audit.json

@@ -190,6 +190,51 @@
       "reason_selected": "DryLin N-27 is a dry-running, low-maintenance linear rail already consistent with the igus bushing families used elsewhere in this design, sized for repeated slide-out service. Southco R4 rotary latches are a real quarter-turn positive-locking latch family rated for equipment/battery-tray retention; used in an independent pair so one latch failing cannot silently release the pack, and paired with dedicated engagement-confirmation sensors that prove full lock, not mere alignment.",
       "key_specs": {"rail_family": "igus DryLin N-27", "latch_family": "Southco R4 Series rotary latch", "latch_count_per_pack": 2, "release_action": "two independent positive latches plus a deliberate two-hand pull tab"},
       "cad_representation": "Two slide rails, two independent latch housings with spring-extended pins, one shared pull handle, and two latch-engagement confirmation sensors (ifm IGS204-class inductive proximity sensor family)."
+    },
+    {
+      "id": "battery_cells",
+      "selection": "Molicel P42A 21700 Li-ion, 13S2P",
+      "source_status": "exact_catalog_part",
+      "requirement": "Battery pack must supply the screened peak/continuous system current (see data/te_v059_electrical_system.json and analysis_out/Terrain_Elevate_P1_V0_59_power_budget_audit.json) at a voltage matching every 48 V-rated drive already sourced.",
+      "reason_selected": "Real, widely-available high-discharge 21700 cell (45 A continuous per cell); 13S gives ~48 V nominal / 54.6 V max charge matching the sourced motor/actuator drives, 2P gives 90 A pack continuous discharge with margin over the screened peak draw.",
+      "key_specs": {"cell_nominal_voltage_V": 3.6, "cell_capacity_Ah": 4.2, "cell_continuous_discharge_A": 45.0, "configuration": "13S2P", "pack_nominal_voltage_V": 46.8, "pack_energy_Wh": 393.12},
+      "cad_representation": "48 V battery pack envelope (existing battery_pack_48v box) sized with margin over the bare 26-cell volume for BMS, wiring, and enclosure."
+    },
+    {
+      "id": "battery_management_system",
+      "selection": "Orion Jr BMS (Ewert Energy Systems), 13S-capable",
+      "source_status": "configured_to_order_catalog_product",
+      "requirement": "Independent battery management separate from the motor-control MCU, with integrated main contactor/precharge sequencing and CAN reporting to the safety supervisor.",
+      "reason_selected": "Real EV/robotics-grade BMS with integrated precharge and contactor control, avoiding an unmodeled custom precharge circuit; CAN output lets the existing S32K344 safety supervisor consume real pack state instead of assuming it.",
+      "key_specs": {"max_series_cells": 16, "configured_series_cells": 13, "integrated_contactor_control": true, "interface": "CAN"},
+      "cad_representation": "BMS module envelope mounted adjacent to the battery pack tray."
+    },
+    {
+      "id": "battery_charger",
+      "selection": "Mean Well PB-1500-54",
+      "source_status": "exact_catalog_part",
+      "requirement": "Charge the 13S Li-ion pack (54.6 V max) from a real, purchasable AC-DC source rather than an unmodeled generic charger.",
+      "reason_selected": "Real catalog charger in the correct 54 V-class output range; ~1500 W class recharges the pack's usable energy in roughly 20-25 minutes without exceeding the cells' safe charge-current envelope at this pack's 2P configuration.",
+      "key_specs": {"output_voltage_V": 54.0, "power_class_W": 1500},
+      "cad_representation": "External accessory, not carried onboard; a sealed charge-port receptacle is the onboard CAD element (see power_input_connector)."
+    },
+    {
+      "id": "power_input_connector",
+      "selection": "TE Connectivity DEUTSCH DTP charge-port receptacle",
+      "source_status": "catalog_family_exact_shell_selected_at_harness_release",
+      "requirement": "Sealed, keyed charge-port connection consistent with the DTP power connector family already used at each corner.",
+      "reason_selected": "Reuses the already-sourced DTP family (25 A per contact) rather than introducing an unrelated connector standard; sealed IP-rated shell suits an exterior-accessible charge port.",
+      "key_specs": {"contact_rating_A": 25, "family": "TE DEUTSCH DTP"},
+      "cad_representation": "Sealed charge-port receptacle body on the chassis exterior, wired to the BMS charge input."
+    },
+    {
+      "id": "low_voltage_dc_dc_converter",
+      "selection": "Mean Well SD-100B-12",
+      "source_status": "exact_catalog_part",
+      "requirement": "Control/sensor electronics need a regulated low-voltage rail, not the raw 48 V battery bus, and must be isolated from battery-bus transients.",
+      "reason_selected": "Real catalog 48 V-to-12 V DC-DC converter sized above the screened electronics baseline load with margin.",
+      "key_specs": {"input_voltage_V": "48", "output_voltage_V": 12.0, "output_power_W": 100.0},
+      "cad_representation": "DC-DC converter module envelope mounted on the electronics bank plate."
     }
   ]
 }

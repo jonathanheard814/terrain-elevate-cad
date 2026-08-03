@@ -1,0 +1,64 @@
+{
+  "truth_boundary": "Electrical system sizing screen for CAD/BOM completeness. Not certification, not a UL/IEC compliance review, not a wiring-harness release drawing.",
+  "system": {
+    "nominal_voltage_V": 48.0,
+    "topology": "Single 48 V nominal battery bus feeding four corner actuator drives, four wheel-drive motor controllers, two pod pitch actuator drives, and a 48V-to-low-voltage DC-DC converter for control/sensor electronics, through a main contactor, precharge, and branch fusing."
+  },
+  "battery_pack": {
+    "cell_selection_SRC": "Molicel P42A 21700 Li-ion (NMC/NCA)",
+    "cell_nominal_voltage_V_SRC": 3.6,
+    "cell_capacity_Ah_SRC": 4.2,
+    "cell_continuous_discharge_A_SRC": 45.0,
+    "cell_mass_g_SRC": 69.0,
+    "configuration_CALC": "13S2P",
+    "series_count": 13,
+    "parallel_count": 2,
+    "pack_nominal_voltage_V_CALC": 46.8,
+    "pack_max_charge_voltage_V_CALC": 54.6,
+    "pack_capacity_Ah_CALC": 8.4,
+    "pack_energy_Wh_CALC": 393.12,
+    "pack_max_continuous_discharge_A_CALC": 90.0,
+    "pack_cell_mass_kg_CALC": 1.794,
+    "reason": "13S gives a ~48 V nominal / 54.6 V max-charge pack matching every 48 V-rated drive already sourced in this design. 2P gives 90 A continuous discharge capability, well above the screened peak system draw, and 8.4 Ah / 393 Wh gives a real margin over the continuous-climbing runtime target computed below. Exact configuration is CALC from a real cataloged cell; a production pack still needs a cell-supplier quote and UL 2271/2580-class pack certification.",
+    "depth_of_discharge_fraction_ASSUMED": 0.8,
+    "usable_energy_Wh_CALC": 314.5
+  },
+  "bms": {
+    "selection_SRC": "Orion Jr BMS (Ewert Energy Systems), 13S-capable",
+    "source_status": "configured_to_order_catalog_product",
+    "requirement": "Independent battery management separate from the motor-control MCU (master requirement: safety supervisor separate from motor-control MCU), with integrated main contactor / precharge sequencing and CAN reporting to the S32K3 safety supervisor.",
+    "reason_selected": "Orion Jr is a real EV/robotics-grade BMS supporting up to 16S with integrated precharge and contactor control, avoiding a from-scratch custom precharge circuit design; CAN output lets the existing S32K344 safety supervisor consume real pack state (voltage/current/temperature/fault) instead of assuming it."
+  },
+  "charger": {
+    "selection_SRC": "Mean Well PB-1500-54 (54 V configurable AC-DC charger)",
+    "source_status": "exact_catalog_part",
+    "requirement": "Charge a 13S Li-ion pack (54.6 V max) at a real, purchasable AC-DC supply rather than an unmodeled generic 'charger'.",
+    "reason_selected": "Real Mean Well catalog charger family in the correct 54 V-class output range; ~1500 W class gives a full charge from empty in roughly 20-25 minutes at the pack's usable energy, without exceeding the cells' safe charge-current envelope at this pack's 2P configuration."
+  },
+  "low_voltage_dc_dc": {
+    "selection_SRC": "Mean Well SD-100B-12 (48 V to 12 V DC-DC converter)",
+    "source_status": "exact_catalog_part",
+    "requirement": "Control/sensor electronics (S32K344 safety supervisor, STM32G474 motor control, DRV8353 gate drivers, ifm/Novotechnik sensors, connectors) need a regulated low-voltage rail, not raw 48 V battery bus.",
+    "reason_selected": "Real, catalog DC-DC converter family already sized above the electronics_baseline_continuous_W screen below with margin; isolates control electronics from battery bus transients."
+  },
+  "load_assumptions": {
+    "corner_actuator_current_A_SRC": 9.94,
+    "corner_actuator_current_reason": "maxon EC-i 52 part 633919 nominal current, already sourced in data/te_v059_physics_elements.json actuator_models.corner_vertical_actuator.",
+    "corner_actuators_simultaneous_peak_ASSUMED": 4,
+    "corner_actuators_simultaneous_peak_reason": "Normal phase-shifted operation (scripts/analyze_vehicle_requirements.py's combined_ramp_like_stair_climb_screen) keeps corners staggered, but fuse/wire/BMS sizing must cover the worst-case coincidence -- e.g. an isolated one-wheel event forcing an out-of-cycle correction while others are still finishing theirs -- so peak assumes all four simultaneously active.",
+    "corner_actuator_average_duty_fraction_ASSUMED": 0.75,
+    "corner_actuator_average_duty_reason": "The AB44 holding brake is normally-engaged (spring-locked when de-energized), so a stationary corner draws ~zero motor current -- current only flows during active transitions. scripts/simulate_smooth_stair_climb.py's own window sizing puts two ~0.58 s active windows inside each ~1.4 s tread period per corner, i.e. roughly 80% active time; 75% is used as a slightly rounded-down figure pending real duty-cycle telemetry.",
+    "wheel_drive_mechanical_efficiency_ASSUMED": 0.85,
+    "pod_pitch_actuator_power_W_ASSUMED": 180.0,
+    "pod_pitch_actuator_power_reason": "Thomson Electrak MD MDxxA200-class actuators in the 2000 N / 300 mm stroke configuration are commonly offered in 140-220 W motor variants; exact wattage is OPEN pending final Thomson configuration/quote.",
+    "pod_pitch_active_fraction_ASSUMED": 0.15,
+    "pod_pitch_active_fraction_reason": "Pod pitch correction is a one-time transition during stair approach/landing, then held by the mechanical_level_lock, not continuously driven during climbing.",
+    "electronics_baseline_continuous_W_ASSUMED": 60.0,
+    "electronics_baseline_reason": "Sum of safety supervisor, motor control ECU, inverter logic supplies, preview/position/wheel/IMU sensors, and connector/harness quiescent draw; each device's own datasheet current is small (sensors sub-1 W, ECUs single-digit W) -- summed and margined pending a per-device current budget from final PCB designs.",
+    "target_continuous_climb_runtime_minutes_ASSUMED": 5.0,
+    "target_continuous_climb_runtime_reason": "5 minutes of uninterrupted stair climbing covers several consecutive flights back-to-back, a realistic worst case -- a real trip mixes brief climbing bursts with much lower-power flat-ground rolling, so this is not the same as total trip range (OPEN: no flat-ground rolling power/range estimate exists yet)."
+  },
+  "simulation_outputs_that_use_this_basis": [
+    "analysis_out/Terrain_Elevate_P1_V0_59_power_budget_audit.json"
+  ]
+}

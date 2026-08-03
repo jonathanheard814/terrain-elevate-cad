@@ -51,5 +51,13 @@
     "local_drive_suspension_loop": "Sub-millisecond motor/suspension command loop; preview sensors feed a predictive stair phase map and are not waited on at the stair edge.",
     "control_mode": "Sensor-previewed predictive corner prepositioning plus sub-millisecond local wheel torque and suspension control; not wheel-only climbing.",
     "minimum_preview_distance_fraction_of_going": 1.0
+  },
+  "smooth_climb_assumptions": {
+    "preview_treads_ASSUMED": 2,
+    "preview_treads_reason": "ifm O1D100 preview sensor (data/te_v059_sourced_part_register.json, id stair_preview_distance_sensor) has a 0.2-10 m measuring range, far beyond the 0.2794 m stair going; 2 treads of lookahead (0.559 m) stays well inside that range while giving a jerk-limited blend enough time budget instead of reacting at the stair edge.",
+    "actuator_speed_margin_fraction_ASSUMED": 0.8,
+    "control_loop_margin_s_ASSUMED": 0.05,
+    "simulated_tread_count_ASSUMED": 6,
+    "position_discontinuity_tolerance_mm_ASSUMED": 0.5
   }
 }

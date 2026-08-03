@@ -181,6 +181,15 @@
       "reason_selected": "Heavy-duty and compact screw/adhesive cable tie mounts are purchasable, UV-resistant polymer retention hardware.",
       "key_specs": {"HDM312_mount_hole_mm": 7.8, "HDM312_length_mm": 36.3, "TY3G1S_length_mm": 20, "TY3G1S_width_mm": 14},
       "cad_representation": "Harness conduit loops, strain-relief modules, and connector mounting plates."
+    },
+    {
+      "id": "battery_quick_release_mechanism",
+      "selection": "igus DryLin N-27 linear guide rail pair with Southco R4 Series rotary latches",
+      "source_status": "catalog_family",
+      "requirement": "Battery pack must be user-removable for swap/service without tools, with a positive mechanical lock (not a clip or detent alone) that cannot release from a single failure and is not accidentally openable.",
+      "reason_selected": "DryLin N-27 is a dry-running, low-maintenance linear rail already consistent with the igus bushing families used elsewhere in this design, sized for repeated slide-out service. Southco R4 rotary latches are a real quarter-turn positive-locking latch family rated for equipment/battery-tray retention; used in an independent pair so one latch failing cannot silently release the pack, and paired with dedicated engagement-confirmation sensors that prove full lock, not mere alignment.",
+      "key_specs": {"rail_family": "igus DryLin N-27", "latch_family": "Southco R4 Series rotary latch", "latch_count_per_pack": 2, "release_action": "two independent positive latches plus a deliberate two-hand pull tab"},
+      "cad_representation": "Two slide rails, two independent latch housings with spring-extended pins, one shared pull handle, and two latch-engagement confirmation sensors (ifm IGS204-class inductive proximity sensor family)."
     }
   ]
 }

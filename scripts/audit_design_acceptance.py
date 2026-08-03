@@ -21,6 +21,7 @@ def main() -> None:
     sourced_register = _load(ROOT / "data" / "te_v059_sourced_part_register.json")
     physics_basis = _load(ROOT / "data" / "te_v059_physics_elements.json")
     physics_audit = _load(ROOT / "analysis_out" / "Terrain_Elevate_P1_V0_59_physics_basis_audit.json")
+    smooth_climb_audit = _load(ROOT / "analysis_out" / "Terrain_Elevate_P1_V0_59_smooth_climb_audit.json")
     minimums = criteria["minimums"]
 
     errors: list[str] = []
@@ -84,6 +85,11 @@ def main() -> None:
             errors.append(f"Physics basis missing required library declaration: {library_name}")
     if requirements.get("wheel_propulsion_screen", {}).get("result") != "FAIL_TRACTION_SCREEN":
         errors.append("Wheel-only traction screen must remain honest; it is not the combined stair-climb mechanism")
+    if smooth_climb_audit.get("result") != "PASS":
+        errors.append("Smooth (jerk-limited) stair-climb trajectory audit does not pass")
+    for gate_name, gate in smooth_climb_audit.get("gates", {}).items():
+        if gate.get("result") != "PASS":
+            errors.append(f"Smooth stair-climb gate failed: {gate_name}")
     allowed_source_statuses = {
         "exact_catalog_part",
         "catalog_series_configured_length",

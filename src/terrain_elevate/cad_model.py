@@ -236,8 +236,19 @@ def _add_chassis(components: list[Component], g: dict) -> None:
             _soft_box("handle_right_hinge_backstay", "right hinge backstay from handle bracket to chassis rail", "31-36", (-485, -outer_y, z + 30), (150, 36, 92), 5, material="steel"),
             _soft_box("seat_left_roll_trunnion_stand", "seat roll trunnion stand tied to left chassis rail", "13-26", (0, 265, z + 165), (86, 58, 260), 7, material="steel"),
             _soft_box("seat_right_roll_trunnion_stand", "seat roll trunnion stand tied to right chassis rail", "13-26", (0, -265, z + 165), (86, 58, 260), 7, material="steel"),
-            _soft_box("battery_front_hold_down_strap", "battery hold-down strap bolted to tray", "41-59", (75, 0, z + 15), (18, 250, 20), 4, material="steel"),
-            _soft_box("battery_rear_hold_down_strap", "battery hold-down strap bolted to tray", "41-59", (-215, 0, z + 15), (18, 250, 20), 4, material="steel"),
+            # Battery is a slide-out pack on the tray below, released by two
+            # independent spring latches (not a single central lock, per
+            # requirement that one lock failure must not create an unsafe
+            # state) plus a deliberate two-hand pull -- not bolted straps.
+            _soft_box("battery_quick_release_rail_left", "left slide-out rail, battery pack removal", "41-59", (-60, 85, z - 55), (280, 14, 20), 4, material="steel"),
+            _soft_box("battery_quick_release_rail_right", "right slide-out rail, battery pack removal", "41-59", (-60, -85, z - 55), (280, 14, 20), 4, material="steel"),
+            _soft_box("battery_quick_release_latch_housing_left", "left positive spring latch housing, independent of right latch", "41-59", (100, 85, z - 55), (36, 24, 20), 4, material="steel"),
+            _soft_box("battery_quick_release_latch_housing_right", "right positive spring latch housing, independent of left latch", "41-59", (100, -85, z - 55), (36, 24, 20), 4, material="steel"),
+            _cylinder("battery_quick_release_latch_pin_left", "left latch pin, spring-extended into tray keeper when locked", "41-59", (100, 85, z - 55), 5, 30, "Y", "steel"),
+            _cylinder("battery_quick_release_latch_pin_right", "right latch pin, spring-extended into tray keeper when locked", "41-59", (100, -85, z - 55), 5, 30, "Y", "steel"),
+            _soft_box("battery_quick_release_pull_handle", "two-hand deliberate release pull tab linked to both latch pins", "41-59", (115, 0, z - 55), (20, 60, 20), 4, material="plastic"),
+            _soft_box("battery_latch_engagement_sensor_left", "left latch full-engagement confirmation sensor, not credited as the structural lock", "67", (100, 85, z - 55), (10, 8, 10), 2, material="electronics"),
+            _soft_box("battery_latch_engagement_sensor_right", "right latch full-engagement confirmation sensor, not credited as the structural lock", "67", (100, -85, z - 55), (10, 8, 10), 2, material="electronics"),
             _soft_box("battery_tray_left_hanger", "left battery tray hanger bracket to chassis rail", "41-59", (-45, 225, z - 20), (335, 240, 78), 5, material="steel"),
             _soft_box("battery_tray_right_hanger", "right battery tray hanger bracket to chassis rail", "41-59", (-45, -225, z - 20), (335, 240, 78), 5, material="steel"),
             _soft_box("front_sensor_left_stanchion", "front sensor bridge left vertical stanchion", "67", (wb / 2 + 55, 250, z + 92), (34, 34, 200), 5, material="steel"),
@@ -565,6 +576,52 @@ def build_components(params: dict, include_reference: bool = False) -> list[Comp
     if include_reference:
         _add_reference_geometry(components, g)
     return components
+
+
+def _is_folding_handle_group(component: Component) -> bool:
+    """Parts that physically move with the push handle when it folds down
+    about fold_hinge_axis_left/right -- not the hinge itself or its
+    chassis-side mounting brackets/backstays, which stay fixed."""
+    name = component.name.lower()
+    return name.startswith(
+        (
+            "handle_left_upright",
+            "handle_right_upright",
+            "handle_grip_deadman_bar",
+            "handle_left_lower_yoke_link",
+            "handle_right_lower_yoke_link",
+            "deadman_release_paddle",
+            "deadman_paddle_hinge_tab",
+        )
+    )
+
+
+def build_folded_pose_components(params: dict) -> list[Component]:
+    """Return a visual kinematic pose: the folding handle assembly rotated
+    down about its real modeled hinge axis (fold_hinge_axis_left/right),
+    everything else held at rest position.
+
+    This is a partial fold: the corner suspension towers and seat pod have no
+    fold mechanism modeled yet, so the reported envelope is a conservative
+    (upper-bound) estimate -- a design that also folds those would only get
+    smaller, not bigger, than what this pose reports.
+    """
+    g = params["geometry"]
+    hinge_pivot = (-540.0, 0.0, g["frame_z_mm"] + 95.0)
+    fold_angle_deg = 100.0
+    posed: list[Component] = []
+    for component in build_components(params, include_reference=False):
+        if _is_folding_handle_group(component):
+            posed.append(_rotated_y(component, fold_angle_deg, hinge_pivot, "_folded_pose"))
+        else:
+            posed.append(component)
+    return posed
+
+
+def folded_pose_bounding_box_mm(params: dict) -> list[float]:
+    compound = _compound(build_folded_pose_components(params))
+    bb = compound.val().BoundingBox()
+    return [bb.xmin, bb.ymin, bb.zmin, bb.xmax, bb.ymax, bb.zmax]
 
 
 def build_stair_climb_pose_components(params: dict) -> list[Component]:

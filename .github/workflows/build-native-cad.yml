@@ -6,6 +6,7 @@ on:
     paths:
       - "scripts/build_occt_cad.py"
       - "scripts/analyze_vehicle_requirements.py"
+      - "scripts/simulate_smooth_stair_climb.py"
       - "scripts/audit_assembly_connectivity.py"
       - "scripts/export_simulation_package.py"
       - "scripts/validate_simulation_package.py"
@@ -26,6 +27,7 @@ on:
     paths:
       - "scripts/build_occt_cad.py"
       - "scripts/analyze_vehicle_requirements.py"
+      - "scripts/simulate_smooth_stair_climb.py"
       - "scripts/audit_assembly_connectivity.py"
       - "scripts/export_simulation_package.py"
       - "scripts/validate_simulation_package.py"
@@ -65,7 +67,9 @@ jobs:
       - name: Build Fusion-ready prototype CAD
         run: |
           python scripts/analyze_vehicle_requirements.py
+          python scripts/simulate_smooth_stair_climb.py
           python scripts/build_occt_cad.py
+          python scripts/audit_fold_envelope.py
           python scripts/export_simulation_package.py
           python scripts/generate_matlab_package.py
 
@@ -92,6 +96,8 @@ jobs:
             cad_out/Terrain_Elevate_P1_V0_59_manifest.json
             analysis_out/Terrain_Elevate_P1_V0_59_requirements_screen.json
             analysis_out/Terrain_Elevate_P1_V0_59_stair_phase_actuator_sweep.csv
+            analysis_out/Terrain_Elevate_P1_V0_59_smooth_climb_audit.json
+            analysis_out/Terrain_Elevate_P1_V0_59_smooth_climb_trajectory.csv
             analysis_out/Terrain_Elevate_P1_V0_59_connectivity_audit.json
             analysis_out/Terrain_Elevate_P1_V0_59_physics_basis_audit.json
             analysis_out/Terrain_Elevate_P1_V0_59_design_acceptance_audit.json

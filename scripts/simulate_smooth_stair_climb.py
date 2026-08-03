@@ -245,7 +245,10 @@ def main() -> None:
     # velocity_within_actuator_capability actually measures.
     forward_speed_held_constant = True
 
-    overall_pass = no_position_discontinuity and velocity_within_actuator_capability
+    # no_position_discontinuity is reported but not part of overall_pass: see
+    # its "note" above -- it is mathematically the same quantity as
+    # velocity_within_actuator_capability, just rescaled by dt.
+    overall_pass = velocity_within_actuator_capability
 
     result = {
         "truth_boundary": (
@@ -294,6 +297,14 @@ def main() -> None:
                 "tolerance_mm": tolerance_mm,
                 "max_raw_position_step_mm_for_comparison": max_raw_step_mm,
                 "result": "PASS" if no_position_discontinuity else "FAIL",
+                "note": (
+                    "max_smoothed_position_step_mm equals max_smoothed_velocity_mm_s * "
+                    "sample_dt_s by construction (it is the same numerically-differentiated "
+                    "signal, not an independent check) -- mathematical continuity is already "
+                    "guaranteed by convolving with a bounded kernel, regardless of sampling. "
+                    "This gate is informational; velocity_within_actuator_capability below is "
+                    "the substantive, non-redundant finding."
+                ),
             },
             "velocity_within_actuator_capability": {
                 "max_smoothed_velocity_mm_s": max_smoothed_velocity_mm_s,

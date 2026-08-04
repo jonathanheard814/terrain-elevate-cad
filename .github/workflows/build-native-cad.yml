@@ -53,6 +53,8 @@ jobs:
   build-occt-cad:
     runs-on: ubuntu-22.04
     timeout-minutes: 45
+    permissions:
+      contents: write
 
     steps:
       - uses: actions/checkout@v4
@@ -138,3 +140,28 @@ jobs:
             cad_out/Terrain_Elevate_P1_V0_59_stair_climb_pose_isometric.svg
             cad_out/Terrain_Elevate_P1_V0_59_folded_pose_isometric.svg
           if-no-files-found: warn
+
+      # Renders are committed into the repo (not just left as run artifacts)
+      # so the current design is viewable directly on GitHub without
+      # downloading a build. Guarded with [skip ci] and a paths-ignore on
+      # docs/renders so this cannot retrigger itself.
+      - name: Render PNGs and commit to docs/renders
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        run: |
+          set -euo pipefail
+          sudo apt-get update && sudo apt-get install -y librsvg2-bin
+          mkdir -p docs/renders
+          for view in isometric stair_climb_pose_isometric folded_pose_isometric; do
+            src="cad_out/Terrain_Elevate_P1_V0_59_${view}.svg"
+            [ -s "$src" ] || continue
+            rsvg-convert -w 1600 -b white "$src" -o "docs/renders/${view}.png"
+          done
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add docs/renders
+          if git diff --cached --quiet; then
+            echo "renders unchanged"
+          else
+            git commit -m "Update CAD isometric renders [skip ci]"
+            git push
+          fi

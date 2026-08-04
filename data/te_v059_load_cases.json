@@ -59,8 +59,6 @@
     "control_loop_margin_s_ASSUMED": 0.05,
     "simulated_tread_count_ASSUMED": 6,
     "position_discontinuity_tolerance_mm_ASSUMED": 0.5,
-    "smoothing_window_fraction_of_tread_period_ASSUMED": 0.5,
-    "smoothing_window_fraction_reason": "Smoothing span as a fraction of the time to traverse one tread. Smaller tracks the ideal ramp more closely but demands proportionally more actuator speed; larger is gentler on the actuator but lets the chassis follow the staircase instead of the ramp. 0.5 is the knee of that trade for the current wheel/actuator pair -- see the ramp_error_vs_actuator_speed_tradeoff note in the emitted audit for the measured sweep.",
     "chassis_ramp_error_budget_mm_ASSUMED": 25.0,
     "chassis_ramp_error_budget_reason": "How far the chassis corner may deviate from the ideal ramp line before the ride stops being 'ramp-like'. 25 mm is about 12% of the 203.2 mm stair rise -- i.e. the smoothed path removes ~88% of the raw step. Chosen as an engineering target, not a sourced ride-comfort standard; a real limit should come from a stroller/wheelchair vibration-comfort spec (OPEN)."
   }

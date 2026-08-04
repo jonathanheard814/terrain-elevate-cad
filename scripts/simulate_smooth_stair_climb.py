@@ -215,42 +215,79 @@ def main() -> None:
         for i in range(len(series) - 1)
     )
     # Peak-to-peak range of the (now continuous, periodic) clearance signal --
-    # the actual distance the actuator must travel to track it, as opposed to
-    # max_jump_mm above (the fine-grid adjacent-sample delta, which stays
-    # small by construction once the ground model is continuous and says
-    # nothing about how far the actuator has to move over a full cycle).
+    # reported for context. NOT used to size the window below: a closed-form
+    # "(15/8)*range/T" isolated-step estimate was tried and measured against
+    # the real convolution output (see git history) -- it assumes the whole
+    # range happens as one abrupt transition, which drastically overestimates
+    # the velocity a *continuous* periodic signal actually needs, so it kept
+    # picking windows over 10x too long. Direct measurement (below) replaces
+    # it: there is no shortcut formula for what a continuous wheel-rolling
+    # contact signal needs, only measuring the actual convolution output.
     max_correction_range_mm = max(max(series) - min(series) for series in raw_by_corner.values())
 
-    # Smoothing window is the tightest of three independent caps:
-    #  - preview budget: you cannot start lifting earlier than you can see.
-    #  - a fixed fraction of tread period: an upper bound so the window is
-    #    never absurdly long relative to how often the geometry repeats.
-    #  - actuator speed margin: sized from the *actual* distance the
-    #    actuator must travel (max_correction_range_mm) against the screened
-    #    actuator speed. This is the one that matters once the wheel is large
-    #    enough to roll over the nosing mostly unaided -- the required travel
-    #    shrinks a lot, and without this cap the window stayed pinned to the
-    #    fixed-fraction bound regardless, over-smoothing a signal that no
-    #    longer needed nearly that much averaging and blowing the ride-
-    #    quality budget for no actuator-capability reason.
     preview_cap_s = preview_time_s - control_margin_s
     tread_period_s = going_m / forward_speed_mps
-    speed_margin_window_s = (
-        (15.0 / 8.0) * max_correction_range_mm / (speed_margin * actuator_linear_speed_mm_s)
-        if max_correction_range_mm > 0
-        else 0.0
-    )
-    window_s = min(
-        smooth["smoothing_window_fraction_of_tread_period_ASSUMED"] * tread_period_s,
-        preview_cap_s,
-        speed_margin_window_s if speed_margin_window_s > 0 else preview_cap_s,
-    )
-
     dt_s = combined["control_loop_period_ms_ASSUMED"] / 1000.0 * 4.0
     total_time_s = (n_treads * going_m) / forward_speed_mps
     n_time_samples = int(total_time_s / dt_s) + 1
     time_s = [i * dt_s for i in range(n_time_samples)]
-    window_n = max(2, round(window_s / dt_s))
+
+    # Steady-state trim, computed here (it only depends on preview_time_s and
+    # time_s, not on window_n) so the bisection search below measures peak
+    # velocity over the *same* trimmed region as the final reported metric.
+    # Using the untrimmed array here previously caused the search to chase a
+    # spurious edge artifact -- see the note where this is reused after the
+    # search -- landing on a needlessly large window.
+    steady_start_idx = next((i for i, t in enumerate(time_s) if t >= preview_time_s), 0)
+    steady_end_idx = len(time_s) - steady_start_idx
+    if steady_end_idx <= steady_start_idx:
+        steady_start_idx, steady_end_idx = 0, len(time_s)
+
+    def _peak_velocity_for_window_n(candidate_window_n: int) -> float:
+        """Actually run the preview-dilation + convolution pipeline at a
+        candidate window size and measure the resulting peak velocity across
+        all four corners -- the only reliable way to know what a given
+        window costs in actuator speed for this (non-isolated-step) signal."""
+        peak = 0.0
+        for name in wheel_x_offsets_m:
+            raw_series = raw_by_corner[name]
+            raw_time = []
+            for t in time_s:
+                x_mm = t * forward_speed_mps * 1000.0
+                idx = min(int(x_mm / (dx_m * 1000.0)), len(raw_series) - 1)
+                raw_time.append(raw_series[idx])
+            previewed = _preview_running_max(raw_time, candidate_window_n, candidate_window_n)
+            smoothed = _convolve_lookahead(previewed, _smoothing_kernel(candidate_window_n))
+            smoothed = smoothed[steady_start_idx:steady_end_idx]
+            peak = max(peak, _max_abs(_derivative(smoothed, dt_s)))
+        return peak
+
+    # Smallest window that keeps peak velocity within the actuator's speed
+    # margin, found by bisection (velocity decreases monotonically as the
+    # window widens -- confirmed by direct sweep, not assumed): this
+    # maximizes ramp-tracking accuracy subject to the actuator actually being
+    # able to deliver it, instead of guessing a window and hoping. Upper
+    # bound is the tighter of the preview budget and a generous multiple of
+    # tread period; if even that cannot bring velocity under budget, the
+    # actuator itself is the limit and no window fixes it (reported honestly
+    # via velocity_within_actuator_capability below, not hidden by silently
+    # over-smoothing).
+    lo_n = 2
+    search_ceiling_n = max(lo_n + 1, round(min(preview_cap_s, 2.0 * tread_period_s) / dt_s))
+    hi_n = search_ceiling_n
+    target_velocity_mm_s = speed_margin * actuator_linear_speed_mm_s
+    search_ceiling_infeasible = _peak_velocity_for_window_n(hi_n) > target_velocity_mm_s
+    if search_ceiling_infeasible:
+        window_n = hi_n  # even the widest allowed window can't hit the margin
+    else:
+        while hi_n - lo_n > 1:
+            mid_n = (lo_n + hi_n) // 2
+            if _peak_velocity_for_window_n(mid_n) <= target_velocity_mm_s:
+                hi_n = mid_n
+            else:
+                lo_n = mid_n
+        window_n = hi_n
+    window_s = window_n * dt_s
     kernel = _smoothing_kernel(window_n)
     # The backward dilation must be at least window_n (kernel length minus
     # one) for the clearance guarantee in _preview_running_max's docstring to
@@ -294,17 +331,10 @@ def main() -> None:
         previewed = _preview_running_max(raw_time, window_n, preview_n)
         smoothed_by_corner[name] = _convolve_lookahead(previewed, kernel)
 
-    # Steady-state window: skip the first preview_time_s (start-up transient,
-    # where the backward dilation lacks a full window of history) and the
-    # last preview_time_s (where _preview_running_max's forward slice runs
-    # off the end of the array and shrinks below preview_n, under-dilating
-    # right at the tail -- otherwise shows up as a spurious clearance
-    # violation that is a simulation-array-boundary artifact, not a real
-    # control-margin failure).
-    steady_start_idx = next((i for i, t in enumerate(time_s) if t >= preview_time_s), 0)
-    steady_end_idx = len(time_s) - steady_start_idx
-    if steady_end_idx <= steady_start_idx:
-        steady_start_idx, steady_end_idx = 0, len(time_s)
+    # steady_start_idx/steady_end_idx (skip the first preview_time_s start-up
+    # transient and the last preview_time_s tail under-dilation) were already
+    # computed above, before the bisection search, so the search measures
+    # velocity over the same trimmed region used here.
 
     per_corner_metrics = {}
     for name in wheel_x_offsets_m:
@@ -396,6 +426,54 @@ def main() -> None:
     # is meaningless.
     overall_pass = velocity_within_actuator_capability and ride_tracks_ramp and clearance_maintained
 
+    # If ride_quality FAILs even at the actuator-optimal window found above,
+    # find what actuator speed *would* be needed to hit the budget: bisect on
+    # window_n for the largest window whose ramp error still stays under
+    # budget (error grows monotonically with window, confirmed by sweep),
+    # then measure the velocity that window actually requires. This is the
+    # real, searched number that actuator_reselection_spec closes against --
+    # not a guess -- for whichever gate is the one actually failing.
+    required_velocity_for_ride_quality_mm_s = None
+    if not ride_tracks_ramp:
+
+        def _ramp_error_for_window_n(candidate_window_n: int) -> float:
+            peak = 0.0
+            for name, x_offset in wheel_x_offsets_m.items():
+                raw_series = raw_by_corner[name]
+                raw_time = []
+                step_time = []
+                ramp_time = []
+                for t in time_s:
+                    x_m = t * forward_speed_mps
+                    x_mm = x_m * 1000.0
+                    idx = min(int(x_mm / (dx_m * 1000.0)), len(raw_series) - 1)
+                    raw_time.append(raw_series[idx])
+                    x_contact = x_m + x_offset + wheelbase_m / 2
+                    step_time.append(_wheel_effective_ground_m(x_contact, wheel_radius_m, rise_m, going_m) * 1000.0)
+                    ramp_time.append(x_contact * slope * 1000.0)
+                previewed = _preview_running_max(raw_time, candidate_window_n, candidate_window_n)
+                smoothed = _convolve_lookahead(previewed, _smoothing_kernel(candidate_window_n))
+                smoothed = smoothed[steady_start_idx:steady_end_idx]
+                step_h = step_time[steady_start_idx:steady_end_idx]
+                ramp_h = ramp_time[steady_start_idx:steady_end_idx]
+                chassis_h = [step_h[i] + smoothed[i] for i in range(len(smoothed))]
+                peak = max(peak, _max_abs(chassis_h[i] - ramp_h[i] for i in range(len(chassis_h))))
+            return peak
+
+        lo_rq, hi_rq = 2, search_ceiling_n
+        if _ramp_error_for_window_n(lo_rq) <= ramp_error_budget_mm:
+            while hi_rq - lo_rq > 1:
+                mid_rq = (lo_rq + hi_rq) // 2
+                if _ramp_error_for_window_n(mid_rq) <= ramp_error_budget_mm:
+                    lo_rq = mid_rq
+                else:
+                    hi_rq = mid_rq
+            required_velocity_for_ride_quality_mm_s = _peak_velocity_for_window_n(lo_rq)
+        # else: even the tightest possible window (n=2, one control-loop step)
+        # cannot hit the budget -- the signal itself has more high-frequency
+        # content than any actuator-side smoothing choice can resolve, which
+        # would point at the wheel/stair geometry itself, not the actuator.
+
     # Exact closure spec for actuator re-selection. For a ball-screw drive:
     #   linear speed  = (motor_rpm / gear_ratio) * lead_mm / 60
     #   axial force   = 2*pi * screw_eff * (motor_torque * gear_ratio * gear_eff) / lead_m
@@ -410,13 +488,25 @@ def main() -> None:
     motor_speed_rpm = actuator["motor_nominal_speed_rpm_SRC"]
     lead_m = lead_mm / 1000.0
     screened_axial_force_N = 2 * math.pi * screw_eff * (motor_torque_Nm * gear_ratio * gear_eff) / lead_m
+    # The binding requirement is whichever gate actually fails: if ride_quality
+    # fails (even at the actuator-optimal window), the searched
+    # required_velocity_for_ride_quality_mm_s is the real target -- sizing
+    # against max_smoothed_velocity_mm_s here would under-report it, since
+    # that value is already the actuator-constrained (not ride-quality-
+    # constrained) optimum. If ride_quality passes, max_smoothed_velocity_mm_s
+    # is the real, achieved figure.
+    reselection_target_velocity_mm_s = (
+        required_velocity_for_ride_quality_mm_s
+        if required_velocity_for_ride_quality_mm_s is not None
+        else max_smoothed_velocity_mm_s
+    )
     # Required lead/gear ratio from each constraint (see algebra above).
-    lead_over_gear_for_speed = max_smoothed_velocity_mm_s * 60.0 / motor_speed_rpm
+    lead_over_gear_for_speed = reselection_target_velocity_mm_s * 60.0 / motor_speed_rpm
     lead_over_gear_for_force = (
         2 * math.pi * screw_eff * motor_torque_Nm * gear_eff * 1000.0 / governing_corner_force_N
     )
     motor_product_shortfall = lead_over_gear_for_speed / lead_over_gear_for_force
-    required_mechanical_power_W = governing_corner_force_N * (max_smoothed_velocity_mm_s / 1000.0)
+    required_mechanical_power_W = governing_corner_force_N * (reselection_target_velocity_mm_s / 1000.0)
 
     result = {
         "truth_boundary": (
@@ -450,13 +540,18 @@ def main() -> None:
             "largest_single_sample_clearance_change_mm": max_jump_mm,
             "clearance_signal_peak_to_peak_range_mm": max_correction_range_mm,
             "preview_budget_window_s": preview_cap_s,
-            "fixed_fraction_window_s": smooth["smoothing_window_fraction_of_tread_period_ASSUMED"] * tread_period_s,
-            "speed_margin_window_s": speed_margin_window_s,
+            "search_ceiling_window_s": search_ceiling_n * dt_s,
+            "search_ceiling_infeasible": search_ceiling_infeasible,
             "window_used_s": window_s,
-            "binding_constraint": (
-                "speed_margin" if window_s == speed_margin_window_s
-                else "preview_budget" if window_s == preview_cap_s
-                else "fixed_fraction_of_tread_period"
+            "window_selection_method": (
+                "Smallest window (by bisection) whose actually-measured peak velocity "
+                "stays within actuator_speed_margin_fraction_ASSUMED of the screened "
+                "actuator speed -- not a closed-form estimate. search_ceiling_window_s is "
+                "the search's upper bound (2 tread periods, capped by the preview budget); "
+                "if search_ceiling_infeasible is true, even that widest allowed window "
+                "could not bring velocity under the margin, window_used_s is that ceiling "
+                "as the best available compromise, and velocity_within_actuator_capability "
+                "below reports the real shortfall rather than hiding it."
             ),
         },
         "per_corner": per_corner_metrics,
@@ -576,14 +671,22 @@ def main() -> None:
         },
         "actuator_reselection_spec": {
             "purpose": (
-                "Exact, selection-neutral closure criterion for the corner actuator. "
-                "Ball-screw speed and force both scale with the motor's torque x speed "
-                "product, so raising screw lead or lowering gear ratio to gain speed "
-                "costs proportional force -- only a higher-power motor closes this."
+                "Exact, selection-neutral closure criterion for the corner actuator, "
+                "sized against whichever gate actually fails. Ball-screw speed and force "
+                "both scale with the motor's torque x speed product, so raising screw "
+                "lead or lowering gear ratio to gain speed costs proportional force -- "
+                "only a higher-power motor closes this."
             ),
-            "required_linear_speed_mm_s": max_smoothed_velocity_mm_s,
+            "binding_gate": (
+                "ride_quality" if required_velocity_for_ride_quality_mm_s is not None
+                else "velocity_within_actuator_capability" if not velocity_within_actuator_capability
+                else "none_both_gates_pass"
+            ),
+            "achieved_velocity_at_actuator_optimal_window_mm_s": max_smoothed_velocity_mm_s,
+            "required_velocity_for_ride_quality_mm_s": required_velocity_for_ride_quality_mm_s,
+            "required_linear_speed_mm_s": reselection_target_velocity_mm_s,
             "delivered_linear_speed_mm_s": actuator_linear_speed_mm_s,
-            "speed_shortfall_factor": max_smoothed_velocity_mm_s / actuator_linear_speed_mm_s,
+            "speed_shortfall_factor": reselection_target_velocity_mm_s / actuator_linear_speed_mm_s,
             "required_axial_force_N": governing_corner_force_N,
             "delivered_axial_force_N": screened_axial_force_N,
             "required_mechanical_power_at_screw_W": required_mechanical_power_W,
@@ -652,18 +755,28 @@ def main() -> None:
             else [
                 f"ride_quality is FAIL: max_chassis_ramp_tracking_error_mm "
                 f"({max_ramp_error_mm:.1f} mm) exceeds ramp_error_budget_mm "
-                f"({ramp_error_budget_mm:.1f} mm) at the current "
-                f"{g['wheel_diameter_mm']:.0f} mm wheel diameter -- see "
-                "wheel_step_geometry above for whether the wheel rolls over the "
-                "nosing unaided at this diameter. A prior window-size sweep (0.01x "
-                "to 1.0x tread period) at a smaller wheel diameter showed this is "
-                "not purely a smoothing-tuning problem when the wheel cannot roll "
-                "over the rise unaided; re-run that sweep at the current diameter "
-                "before assuming the same root cause still applies. Closes either "
-                "by increasing wheel diameter until rolls_over_unaided is true, or "
-                "by justifying a larger chassis_ramp_error_budget_mm_ASSUMED "
-                "against an actual ride-comfort limit, not choosing it to force a "
-                "pass."
+                f"({ramp_error_budget_mm:.1f} mm) even at the actuator-optimal window "
+                "found by bisection (window_used_s in inputs above) -- this is the "
+                "best ramp-tracking the sourced actuator can deliver at the current "
+                f"{g['wheel_diameter_mm']:.0f} mm wheel diameter, not an under-tuned "
+                "window. See wheel_step_geometry above for whether the wheel rolls "
+                "over the nosing unaided at this diameter (it now does, if "
+                "rolls_over_unaided is true, which fixed the earlier clearance/"
+                "jamming problem but not this one -- rolling unaided is necessary "
+                "for ride quality, not sufficient). "
+                + (
+                    "actuator_reselection_spec.required_velocity_for_ride_quality_mm_s "
+                    "is the searched (not estimated) actuator speed that would actually "
+                    "hit the budget."
+                    if required_velocity_for_ride_quality_mm_s is not None
+                    else "Even the tightest possible window (a single control-loop step) "
+                    "cannot hit the budget -- no actuator speed fixes this; the signal's "
+                    "own high-frequency content exceeds what any smoothing can resolve."
+                )
+                + " Closes by sourcing a faster actuator per that figure, by increasing "
+                "wheel diameter further, or by justifying a larger "
+                "chassis_ramp_error_budget_mm_ASSUMED against an actual ride-comfort "
+                "limit, not choosing it to force a pass."
             ]
         ),
         "result": "PASS" if overall_pass else "FAIL",

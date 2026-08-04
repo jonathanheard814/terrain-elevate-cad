@@ -78,7 +78,28 @@
       "screw_efficiency_ASSUMED": 0.85,
       "screened_linear_speed_mps": 0.1705128205,
       "screened_axial_force_N": 2018.3067755,
-      "holding_brake": "maxon AB 44 24 VDC 2.5 Nm part 386054"
+      "holding_brake": "maxon AB 44 24 VDC 2.5 Nm part 386054",
+      "reselection_candidates_checked_SRC": [
+        {
+          "candidate": "Dunkermotoren BG75 dMove, all three stack lengths (BG75x25/x50/x75), 48 V",
+          "source": "Manufacturer datasheet PDF (dunkermotoren.com, '021_bg_75_dmove.pdf'), fetched and read directly",
+          "verified_48V_nominal_torque_speed": {
+            "BG75x25": {"nominal_torque_Nm": 0.62, "nominal_speed_rpm": 3530, "max_torque_Nm": 3.09, "no_load_speed_rpm": 4670, "max_output_power_W": 435},
+            "BG75x50": {"nominal_torque_Nm": 1.02, "nominal_speed_rpm": 3630, "max_torque_Nm": 5.17, "no_load_speed_rpm": 4420, "max_output_power_W": 826},
+            "BG75x75": {"nominal_torque_Nm": 1.36, "nominal_speed_rpm": 3270, "max_torque_Nm": 6.58, "no_load_speed_rpm": 3850, "max_output_power_W": 1029}
+          },
+          "result": "INSUFFICIENT for the corner actuator: largest variant (BG75x75, thermally-connected rating 2.07 Nm / 2920 rpm) gives ~6044 Nm*rpm continuous, versus the ~17215 Nm*rpm the corner actuator screen requires (see analysis_out/*_smooth_climb_audit.json actuator_reselection_spec) -- about 2.8x short even at the best real rating on this datasheet. Still a good fit for wheel_drive below, whose torque need is far lower.",
+          "checked_date": "2026-08-04"
+        },
+        {
+          "candidate": "maxon EC 90 flat, 260 W, 48 V (largest compact EC-flat frame)",
+          "source": "Web search of maxon/distributor listings (RS Online part page), not a directly-fetched primary datasheet -- lower confidence than the Dunkermotoren PDF above",
+          "verified_48V_nominal_torque_speed": {"nominal_torque_Nm": 0.964, "nominal_speed_rpm": 5000, "stall_torque_Nm": 13.1},
+          "result": "INSUFFICIENT: ~4820 Nm*rpm, similar shortfall to the current EC-i 52 despite a much larger 90mm frame -- maxon's compact EC-i/EC-flat product lines appear to top out in this torque*speed class regardless of frame size.",
+          "checked_date": "2026-08-04"
+        }
+      ],
+      "reselection_open_note": "Neither checked candidate closes the gap; closing this needs either a larger industrial BLDC/servo frame outside maxon's compact EC-i/EC-flat lines, or a purpose-built high-speed electric rod actuator (Exlar, Tolomatic are real vendors in this force/speed class) replacing the ball-screw+motor+gearhead assembly directly, sized to the exact force/speed in actuator_reselection_spec. Requires vendor engagement, not resolvable from public datasheets alone."
     },
     "wheel_drive": {
       "motor_family": "Dunkermotoren BG75 dMove with PLG75 gearbox configured for wheel torque target",

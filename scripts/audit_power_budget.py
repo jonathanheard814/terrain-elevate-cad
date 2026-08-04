@@ -19,6 +19,109 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 
 
+def _ride_quality_actuator_power_crosscheck(
+    root: Path,
+    system_voltage: float,
+    corner_duty: float,
+    corner_peak_count: int,
+    pack_continuous_limit_A: float,
+    usable_energy_Wh: float,
+    target_runtime_minutes: float,
+) -> dict:
+    """Can the sourced pack power the actuator ride_quality actually requires?
+
+    Deliberately computed at a physically impossible 100% electrical-to-
+    mechanical efficiency, and counting the corner actuators ONLY (no wheel
+    drives, pod actuators, or electronics baseline). Every real motor, drive,
+    gearbox and screw makes these numbers strictly worse, so a FAIL here is a
+    hard lower-bound result that no efficiency assumption can argue away.
+    """
+    audit_path = root / "analysis_out" / "Terrain_Elevate_P1_V0_59_smooth_climb_audit.json"
+    if not audit_path.exists():
+        return {
+            "applicable": False,
+            "reason": (
+                "smooth_climb_audit.json not found -- run "
+                "scripts/simulate_smooth_stair_climb.py first. Cross-check skipped, "
+                "not passed."
+            ),
+            "result": "NOT_RUN",
+        }
+
+    climb = json.loads(audit_path.read_text())
+    ride_quality = climb.get("ride_quality", {})
+    spec = climb.get("actuator_reselection_spec", {})
+
+    if ride_quality.get("result") == "PASS":
+        return {
+            "applicable": False,
+            "reason": (
+                "ride_quality passes with the currently sourced corner actuator, so "
+                "the power budget above already describes the real machine."
+            ),
+            "result": "NOT_APPLICABLE",
+        }
+
+    required_mech_W = spec.get("required_mechanical_power_at_screw_W")
+    if not required_mech_W:
+        return {
+            "applicable": False,
+            "reason": (
+                "ride_quality fails but no achievable window was found, so no "
+                "required actuator power exists to cross-check against. See "
+                "smooth_climb_audit.json open_items."
+            ),
+            "result": "NOT_APPLICABLE",
+        }
+
+    ideal_continuous_W = required_mech_W * 4 * corner_duty
+    ideal_peak_W = required_mech_W * corner_peak_count
+    ideal_continuous_A = ideal_continuous_W / system_voltage
+    ideal_peak_A = ideal_peak_W / system_voltage
+    per_corner_A = required_mech_W / system_voltage
+
+    # Duty-assumption-free framing: how many corners can extend at the
+    # required rate simultaneously before the pack's own rating is exceeded.
+    corners_within_pack = int(pack_continuous_limit_A // per_corner_A)
+    ideal_runtime_minutes = (usable_energy_Wh / ideal_continuous_W) * 60.0
+
+    continuous_ok = ideal_continuous_A <= pack_continuous_limit_A
+    runtime_ok = ideal_runtime_minutes >= target_runtime_minutes
+
+    return {
+        "applicable": True,
+        "method": (
+            "Substitutes the corner-actuator mechanical power that ride_quality "
+            "requires (smooth_climb_audit.json actuator_reselection_spec) into the "
+            "same duty/simultaneity assumptions used above, at an idealised 100% "
+            "electrical-to-mechanical efficiency and counting corner actuators only."
+        ),
+        "required_mechanical_power_per_corner_W": required_mech_W,
+        "idealised_continuous_A": ideal_continuous_A,
+        "idealised_peak_A": ideal_peak_A,
+        "per_corner_A_at_100pct_efficiency": per_corner_A,
+        "pack_max_continuous_discharge_A": pack_continuous_limit_A,
+        "corners_simultaneously_extendable_within_pack_rating": corners_within_pack,
+        "corner_count": 4,
+        "idealised_runtime_minutes_corners_only": ideal_runtime_minutes,
+        "target_runtime_minutes": target_runtime_minutes,
+        "continuous_current_result": "PASS" if continuous_ok else "FAIL",
+        "runtime_result": "PASS" if runtime_ok else "FAIL",
+        "result": "PASS" if (continuous_ok and runtime_ok) else "FAIL",
+        "interpretation": (
+            f"At 100% efficiency and ignoring every other load, {corners_within_pack} "
+            f"of 4 corner actuators can extend at the ride-quality-required rate "
+            f"within the pack's {pack_continuous_limit_A:.0f} A continuous rating. "
+            "The sourced battery cannot power the actuator that ride_quality "
+            "requires; this is a lower bound, so no efficiency or duty-cycle "
+            "argument recovers it."
+        ) if not continuous_ok else (
+            "The sourced pack can supply the ride-quality-required actuator even at "
+            "these idealised figures; re-check once real drive efficiencies are applied."
+        ),
+    }
+
+
 def main() -> None:
     params = json.loads((ROOT / "data" / "te_v059_parameters.json").read_text())
     load_cases = json.loads((ROOT / "data" / "te_v059_load_cases.json").read_text())
@@ -65,6 +168,24 @@ def main() -> None:
     continuous_A = corner_continuous_A + wheel_continuous_A + pod_continuous_A + electronics_A
     peak_A = corner_peak_A + wheel_peak_A + pod_peak_A + electronics_A
 
+    # Cross-check against the actuator ride_quality actually demands.
+    #
+    # Everything above sizes the pack against the CURRENTLY SOURCED corner
+    # motor (maxon EC-i 52, corner_actuator_current_A_SRC). But
+    # simulate_smooth_stair_climb.py's ride_quality gate reports that this
+    # exact motor is several times too small, and publishes the mechanical
+    # power an actuator that DOES satisfy ride_quality would need. Without
+    # this cross-check the two audits silently describe different machines:
+    # the power budget passes for a vehicle the ride-quality screen has
+    # already rejected. Sizing the pack against a motor known to be
+    # insufficient is not a PASS worth reporting on its own.
+    crosscheck = _ride_quality_actuator_power_crosscheck(
+        ROOT, system_voltage, corner_duty, corner_peak_count,
+        pack_continuous_limit_A=battery["pack_max_continuous_discharge_A_CALC"],
+        usable_energy_Wh=battery["usable_energy_Wh_CALC"],
+        target_runtime_minutes=loads["target_continuous_climb_runtime_minutes_ASSUMED"],
+    )
+
     continuous_W = continuous_A * system_voltage
     peak_W = peak_A * system_voltage
 
@@ -77,7 +198,12 @@ def main() -> None:
     target_runtime_minutes = loads["target_continuous_climb_runtime_minutes_ASSUMED"]
     runtime_result = "PASS" if runtime_at_continuous_climb_minutes >= target_runtime_minutes else "FAIL"
 
-    overall_pass = battery_current_result == "PASS" and runtime_result == "PASS"
+    as_sourced_pass = battery_current_result == "PASS" and runtime_result == "PASS"
+    # The as-sourced screen only answers "can the pack run the parts already on
+    # the BOM". It is reported separately and kept intact, but it must not be
+    # the headline verdict while the cross-check above shows those parts cannot
+    # deliver the required ride.
+    overall_pass = as_sourced_pass and crosscheck.get("result") != "FAIL"
 
     result = {
         "truth_boundary": electrical["truth_boundary"],
@@ -135,6 +261,13 @@ def main() -> None:
             "target_runtime_minutes": target_runtime_minutes,
             "result": runtime_result,
         },
+        "as_sourced_result": "PASS" if as_sourced_pass else "FAIL",
+        "as_sourced_result_meaning": (
+            "Whether the sourced pack can run the parts currently on the BOM. This "
+            "is NOT the same question as whether it can run the machine the design "
+            "actually requires -- see ride_quality_actuator_power_crosscheck."
+        ),
+        "ride_quality_actuator_power_crosscheck": crosscheck,
         "open_items": [
             "pod_pitch_actuator_power_W_ASSUMED and electronics_baseline_continuous_W_ASSUMED "
             "are engineering placeholders, not datasheet values; closes when the Thomson "
@@ -147,7 +280,17 @@ def main() -> None:
             "No thermal analysis of the battery pack, motor drives, or wiring harness "
             "has been performed; closes with a thermal model once enclosure airflow is "
             "designed.",
-        ],
+        ] + ([
+            "ride_quality_actuator_power_crosscheck FAILs: the corner actuator that "
+            "simulate_smooth_stair_climb.py's ride_quality gate requires cannot be "
+            "powered by the sourced 13S2P pack, even at an impossible 100% efficiency "
+            "with every other load ignored. This is an architecture-level conflict, "
+            "not a component-selection gap -- raising actuator speed raises corner "
+            "power roughly in proportion, so the same battery cannot serve both the "
+            "ride budget and the runtime target. Closes by changing one of the three "
+            "constraints that collide here (ramp-error budget, energy storage, or the "
+            "corner mechanism itself), not by re-selecting a motor.",
+        ] if crosscheck.get("result") == "FAIL" else []),
         "result": "PASS" if overall_pass else "FAIL",
     }
 

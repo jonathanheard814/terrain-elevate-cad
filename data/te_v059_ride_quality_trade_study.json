@@ -1,0 +1,69 @@
+{
+  "truth_boundary": "Measured parameter sweeps of the existing kinematic ride-quality screen (scripts/simulate_smooth_stair_climb.py), run by varying one input at a time and recording the reported result. Not FEA, not dynamic contact simulation, not a physical test. Every row was produced by actually running the screen, not by interpolation or closed-form estimate.",
+  "purpose": "The ride_quality gate has failed since the wheel was grown to 430 mm, and the previously chosen remedy -- sourcing a faster corner actuator -- was shown by audit_power_budget.py's ride_quality_actuator_power_crosscheck to be electrically infeasible with the sourced pack. This file records what the two remaining physical levers actually buy, so the design fork is decided against measured numbers rather than intuition, and so these sweeps are not re-derived later.",
+  "method_SRC": "scripts/simulate_smooth_stair_climb.py run repeatedly with a single input patched per run; data/te_v059_parameters.json and data/te_v059_load_cases.json restored byte-identical afterwards. Ride-quality result, chassis ramp-tracking error, and the searched required actuator velocity were read from the screen's own JSON output.",
+  "measured_date": "2026-08-04",
+  "fixed_constraints_that_bound_this_trade_space": {
+    "minimum_combined_climb_forward_speed_mps_SRC": {
+      "value": 0.2,
+      "source": "data/te_v059_acceptance_criteria.json minimums.minimum_combined_climb_forward_speed_mps",
+      "enforcement": "HARD -- scripts/audit_design_acceptance.py raises SystemExit(1) below this value",
+      "traces_to": "Master requirement that the stroller must not break stride or wait at the stair edge."
+    },
+    "chassis_ramp_error_budget_mm_ASSUMED": {
+      "value": 25.0,
+      "source": "data/te_v059_load_cases.json smooth_climb_assumptions",
+      "enforcement": "SOFT -- honest FAIL, does not block the build",
+      "note": "Self-documented in its own reason field as an engineering target, NOT a sourced ride-comfort standard. This is the only one of the three colliding constraints that is not either sourced hardware or a locked master requirement."
+    },
+    "pack_max_continuous_discharge_A_SRC": {
+      "value": 90.0,
+      "source": "data/te_v059_electrical_system.json battery_pack (13S2P sourced pack)",
+      "enforcement": "Physical limit of the sourced cells"
+    },
+    "overall_width_gate_mm_SRC": {
+      "value": 750.0,
+      "source": "data/te_v059_parameters.json geometry.overall_width_gate_mm"
+    }
+  },
+  "lever_1_wheel_diameter": {
+    "description": "Wheel diameter swept at the mandated 0.2 m/s forward speed. A larger wheel bridges the stair nosing on a flatter natural rolling path, so less residual is left for the corner actuator to cancel.",
+    "forward_speed_mps_held_at": 0.2,
+    "ramp_error_budget_mm": 25.0,
+    "rows_CALC": [
+      {"wheel_diameter_mm": 430.0, "chassis_ramp_error_mm": 86.0996, "ride_quality": "FAIL", "required_actuator_velocity_mm_s": 1099.185, "required_mechanical_power_per_corner_W": 1455.209},
+      {"wheel_diameter_mm": 500.0, "chassis_ramp_error_mm": 74.8524, "ride_quality": "FAIL", "required_actuator_velocity_mm_s": 505.955, "required_mechanical_power_per_corner_W": 669.833},
+      {"wheel_diameter_mm": 560.0, "chassis_ramp_error_mm": 65.7123, "ride_quality": "FAIL", "required_actuator_velocity_mm_s": 362.326, "required_mechanical_power_per_corner_W": 479.683},
+      {"wheel_diameter_mm": 620.0, "chassis_ramp_error_mm": 57.5113, "ride_quality": "FAIL", "required_actuator_velocity_mm_s": 282.055, "required_mechanical_power_per_corner_W": 373.412},
+      {"wheel_diameter_mm": 700.0, "chassis_ramp_error_mm": 48.9231, "ride_quality": "FAIL", "required_actuator_velocity_mm_s": 217.818, "required_mechanical_power_per_corner_W": 288.369},
+      {"wheel_diameter_mm": 800.0, "chassis_ramp_error_mm": 39.6297, "ride_quality": "FAIL", "required_actuator_velocity_mm_s": 168.693, "required_mechanical_power_per_corner_W": 223.333},
+      {"wheel_diameter_mm": 900.0, "chassis_ramp_error_mm": 25.4843, "ride_quality": "FAIL", "required_actuator_velocity_mm_s": 137.030, "required_mechanical_power_per_corner_W": 181.414}
+    ],
+    "finding": "Growing the wheel genuinely helps, and helps twice over: chassis ramp error falls monotonically (86.1 mm to 25.5 mm) AND the required actuator power falls by 8x (1455 W to 181 W per corner), which would also dissolve the battery conflict. But the budget is still not met at 900 mm, and a 900 mm wheel exceeds the 750 mm overall_width_gate_mm and is taller than the stroller's own packaging envelope. This lever cannot close the gate within anything that remains a stroller.",
+    "closes_at_ASSUMED": "Extrapolating the trend, roughly 910-930 mm would meet the 25 mm budget. Not swept further because the result is already outside the packaging gate and therefore moot."
+  },
+  "lever_2_forward_speed": {
+    "description": "Forward speed swept at the current 430 mm wheel. Slowing the climb gives the actuator more time per stair, so a tighter (better-tracking) smoothing window becomes reachable within the actuator's rated speed.",
+    "wheel_diameter_mm_held_at": 430.0,
+    "ramp_error_budget_mm": 25.0,
+    "rows_CALC": [
+      {"forward_speed_mps": 0.2, "chassis_ramp_error_mm": 86.0996, "ride_quality": "FAIL", "required_actuator_velocity_mm_s": 1099.185, "speed_shortfall_factor": 6.446},
+      {"forward_speed_mps": 0.05, "chassis_ramp_error_mm": 48.7283, "ride_quality": "FAIL", "required_actuator_velocity_mm_s": 269.069, "speed_shortfall_factor": 1.578},
+      {"forward_speed_mps": 0.04, "chassis_ramp_error_mm": 40.3351, "ride_quality": "FAIL", "required_actuator_velocity_mm_s": 214.729, "speed_shortfall_factor": 1.259},
+      {"forward_speed_mps": 0.031, "chassis_ramp_error_mm": 31.3417, "ride_quality": "FAIL", "required_actuator_velocity_mm_s": 166.099, "speed_shortfall_factor": 0.974}
+    ],
+    "rows_note": "The sweep also ran 0.15, 0.12, 0.10, 0.08, 0.07 and 0.06 m/s. Those runs completed and were consistent with the monotonic trend shown, but their detailed output was not retained, so they are deliberately omitted rather than reconstructed from memory. Every row listed above is a directly recorded measurement.",
+    "finding": "Slowing down helps but cannot close the gate either. At 0.031 m/s -- already 6.5x below the HARD 0.2 m/s acceptance floor -- chassis ramp error is still 31.3 mm against the 25 mm budget. This lever is therefore blocked twice: by the locked no-break-stride requirement, and on its own physics even if that requirement were waived.",
+    "note_on_speed_shortfall_factor": "speed_shortfall_factor compares the required velocity against the actuator's FULL rated speed (170.5 mm/s), while the screen's own window selection derates that by actuator_speed_margin_fraction_ASSUMED = 0.8 (136.4 mm/s). That is why the 0.031 m/s row can show a shortfall below 1.0 while ride_quality still FAILs: the window that would meet the budget needs 166.1 mm/s, which fits inside the raw rating but not inside the design's own safety margin. Reported here so the apparent contradiction is not mistaken for a bug."
+  },
+  "lever_3_faster_actuator": {
+    "description": "The remedy previously chosen. Not swept here because it is settled elsewhere.",
+    "status": "CLOSED -- INFEASIBLE",
+    "why": "Two independent blocks. (1) Component availability: no compact BLDC family reaches the required torque x speed product; Dunkermotoren BG75 dMove (all stacks) and maxon EC 90 flat were checked against real datasheets and are 2.8x and 3.6x short respectively -- see data/te_v059_physics_elements.json reselection_candidates_checked_SRC. (2) Electrical feasibility: even granting a hypothetical actuator that delivers it, powering four of them exceeds the sourced pack. At a physically impossible 100% efficiency, ignoring wheel drives, pod actuators and electronics entirely, the corner actuators alone draw 90.95 A against the pack's 90 A continuous rating, and give 4.32 min runtime against a 5 min target. See scripts/audit_power_budget.py ride_quality_actuator_power_crosscheck. Because that figure is a lower bound, no efficiency or duty-cycle argument recovers it."
+  },
+  "conclusion": {
+    "statement": "The design is over-constrained. Three constraints collide and no two-of-three can be satisfied while the third holds: forward speed >= 0.2 m/s (locked master requirement), chassis ramp error <= 25 mm (unsourced engineering target), and the sourced 90 A / 314.5 Wh battery pack. All three physical levers that could relieve the collision have now been measured and exhausted -- a faster actuator is electrically infeasible, a slower climb is blocked by a locked requirement and fails anyway, and a larger wheel needs ~900 mm against a 750 mm packaging gate.",
+    "consequence": "Closing ride_quality requires changing one of the three colliding constraints, or changing the corner mechanism so that required actuator power stops scaling with the full static corner load. It is not a component-selection problem and should not be pursued as one.",
+    "OPEN": "Which constraint to change is a design decision with no objectively-correct answer and is not made here. The 25 mm budget is the only one of the three that is neither sourced hardware nor a locked master requirement, and its own reason field already flags that it needs a real stroller/wheelchair vibration-comfort standard behind it -- but sourcing that standard could equally confirm 25 mm and rule the current architecture out, so it must be looked up honestly rather than chosen to force a pass."
+  }
+}

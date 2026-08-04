@@ -797,7 +797,14 @@ def export_isometric_views(params: dict, out_dir: Path) -> None:
     """Real vector-projection renders of the actual CAD geometry (SVG, so it
     works headless with no display/GPU) -- not a mockup or concept render."""
     out_dir.mkdir(parents=True, exist_ok=True)
-    view_opt = {"width": 1600, "height": 1200, "projectionDir": (1, -1, 0.75), "showAxes": False}
+    view_opt = {
+        "width": 1600,
+        "height": 1200,
+        "projectionDir": (1, -1, 0.75),
+        "showAxes": False,
+        "showHidden": False,
+        "strokeWidth": 0.4,
+    }
     exporters.export(
         _compound(build_components(params, include_reference=False)),
         str(out_dir / "Terrain_Elevate_P1_V0_59_isometric.svg"),

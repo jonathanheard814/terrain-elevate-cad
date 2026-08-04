@@ -214,27 +214,43 @@ def main() -> None:
         for series in raw_by_corner.values()
         for i in range(len(series) - 1)
     )
+    # Peak-to-peak range of the (now continuous, periodic) clearance signal --
+    # the actual distance the actuator must travel to track it, as opposed to
+    # max_jump_mm above (the fine-grid adjacent-sample delta, which stays
+    # small by construction once the ground model is continuous and says
+    # nothing about how far the actuator has to move over a full cycle).
+    max_correction_range_mm = max(max(series) - min(series) for series in raw_by_corner.values())
 
-    # Smoothing window is the preview budget, minus a control-loop margin.
-    # Earlier revisions also capped this by a level-transition spacing derived
-    # from _detect_levels; that only made sense while the ground model was a
-    # piecewise-constant floor function. With real wheel-over-nosing contact
-    # the clearance floor is continuous, adjacent samples differ constantly,
-    # and that spacing collapsed toward the sample period -- which silently
-    # disabled smoothing entirely. The preview budget is the one physically
-    # meaningful limit: you cannot start lifting earlier than you can see.
+    # Smoothing window is the tightest of three independent caps:
+    #  - preview budget: you cannot start lifting earlier than you can see.
+    #  - a fixed fraction of tread period: an upper bound so the window is
+    #    never absurdly long relative to how often the geometry repeats.
+    #  - actuator speed margin: sized from the *actual* distance the
+    #    actuator must travel (max_correction_range_mm) against the screened
+    #    actuator speed. This is the one that matters once the wheel is large
+    #    enough to roll over the nosing mostly unaided -- the required travel
+    #    shrinks a lot, and without this cap the window stayed pinned to the
+    #    fixed-fraction bound regardless, over-smoothing a signal that no
+    #    longer needed nearly that much averaging and blowing the ride-
+    #    quality budget for no actuator-capability reason.
     preview_cap_s = preview_time_s - control_margin_s
     tread_period_s = going_m / forward_speed_mps
+    speed_margin_window_s = (
+        (15.0 / 8.0) * max_correction_range_mm / (speed_margin * actuator_linear_speed_mm_s)
+        if max_correction_range_mm > 0
+        else 0.0
+    )
     window_s = min(
         smooth["smoothing_window_fraction_of_tread_period_ASSUMED"] * tread_period_s,
         preview_cap_s,
+        speed_margin_window_s if speed_margin_window_s > 0 else preview_cap_s,
     )
 
     dt_s = combined["control_loop_period_ms_ASSUMED"] / 1000.0 * 4.0
     total_time_s = (n_treads * going_m) / forward_speed_mps
     n_time_samples = int(total_time_s / dt_s) + 1
     time_s = [i * dt_s for i in range(n_time_samples)]
-    window_n = max(1, round(window_s / dt_s))
+    window_n = max(2, round(window_s / dt_s))
     kernel = _smoothing_kernel(window_n)
     # The backward dilation must be at least window_n (kernel length minus
     # one) for the clearance guarantee in _preview_running_max's docstring to
@@ -432,9 +448,16 @@ def main() -> None:
             "actuator_speed_margin_fraction_ASSUMED": speed_margin,
             "simulated_tread_count": n_treads,
             "largest_single_sample_clearance_change_mm": max_jump_mm,
+            "clearance_signal_peak_to_peak_range_mm": max_correction_range_mm,
             "preview_budget_window_s": preview_cap_s,
+            "fixed_fraction_window_s": smooth["smoothing_window_fraction_of_tread_period_ASSUMED"] * tread_period_s,
+            "speed_margin_window_s": speed_margin_window_s,
             "window_used_s": window_s,
-            "binding_constraint": "preview_budget",
+            "binding_constraint": (
+                "speed_margin" if window_s == speed_margin_window_s
+                else "preview_budget" if window_s == preview_cap_s
+                else "fixed_fraction_of_tread_period"
+            ),
         },
         "per_corner": per_corner_metrics,
         "gates": {
@@ -482,20 +505,36 @@ def main() -> None:
             ),
             "wheel_diameter_for_unaided_rolling_mm": 2.0 * g["stair_rise_reference_mm"],
             "finding": (
-                "The wheel centre on the lower tread sits at radius above it. To pass a "
-                "nosing without being lifted, that centre must already be at or above "
-                "the nosing, i.e. radius >= rise. At the current "
-                f"{g['wheel_diameter_mm']:.0f} mm diameter (radius "
-                f"{wheel_radius_m * 1000.0:.0f} mm) against a "
-                f"{g['stair_rise_reference_mm']:.1f} mm rise, the wheel jams against the "
-                "riser face and must be actively lifted at least "
-                f"{max(g['stair_rise_reference_mm'] - wheel_radius_m * 1000.0, 0.0):.1f} mm "
-                "at every step. Rolling over unaided would require a wheel diameter of at "
-                f"least {2.0 * g['stair_rise_reference_mm']:.0f} mm, which is well outside "
-                "the consumer-stroller packaging target. This is a genuine design tension "
-                "between the packaging requirement and the no-lifting requirement, not a "
-                "modelling artifact -- surfacing it, not resolving it, is what this screen "
-                "does."
+                (
+                    "The wheel centre on the lower tread sits at radius above it. To pass a "
+                    "nosing without being lifted, that centre must already be at or above "
+                    "the nosing, i.e. radius >= rise. At the current "
+                    f"{g['wheel_diameter_mm']:.0f} mm diameter (radius "
+                    f"{wheel_radius_m * 1000.0:.0f} mm) against a "
+                    f"{g['stair_rise_reference_mm']:.1f} mm rise, radius >= rise holds with "
+                    f"{wheel_radius_m * 1000.0 - g['stair_rise_reference_mm']:.1f} mm margin, "
+                    "so the wheel rolls over the nosing unaided -- no forced lift is "
+                    "required at any step. This does not by itself mean the ride is smooth: "
+                    "the wheel's natural rolling-contact path still deviates from an ideal "
+                    "ramp line (see ride_quality below), which is a separate question this "
+                    "screen does not answer."
+                )
+                if wheel_radius_m * 1000.0 >= g["stair_rise_reference_mm"]
+                else (
+                    "The wheel centre on the lower tread sits at radius above it. To pass a "
+                    "nosing without being lifted, that centre must already be at or above "
+                    "the nosing, i.e. radius >= rise. At the current "
+                    f"{g['wheel_diameter_mm']:.0f} mm diameter (radius "
+                    f"{wheel_radius_m * 1000.0:.0f} mm) against a "
+                    f"{g['stair_rise_reference_mm']:.1f} mm rise, the wheel jams against the "
+                    "riser face and must be actively lifted at least "
+                    f"{max(g['stair_rise_reference_mm'] - wheel_radius_m * 1000.0, 0.0):.1f} mm "
+                    "at every step. Rolling over unaided would require a wheel diameter of at "
+                    f"least {2.0 * g['stair_rise_reference_mm']:.0f} mm. This is a genuine "
+                    "design tension between the packaging requirement and the no-lifting "
+                    "requirement, not a modelling artifact -- surfacing it, not resolving it, "
+                    "is what this screen does."
+                )
             ),
         },
         "ride_quality": {

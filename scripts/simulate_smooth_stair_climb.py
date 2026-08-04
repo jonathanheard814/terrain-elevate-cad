@@ -611,18 +611,20 @@ def main() -> None:
             []
             if ride_tracks_ramp
             else [
-                "ride_quality is FAIL, and a window-size sweep (0.01x to 1.0x tread "
-                "period) confirms this is not a tuning problem: ramp-tracking error "
-                "stays at 74-134 mm across the entire actuator-feasible window range, "
-                "never approaching the 25 mm budget even at the smallest window tested. "
-                "Root cause is wheel_step_geometry above -- the 280 mm wheel cannot roll "
-                "over a 203.2 mm rise, so the chassis is forced to substantially follow "
-                "the physical staircase rather than the ideal ramp regardless of how the "
-                "actuator command is shaped. Closes only by resolving the wheel-diameter "
-                "vs packaging tension (a larger wheel, or accepting a lower ramp-tracking "
-                "target as the real design point and lowering chassis_ramp_error_budget_mm_"
-                "ASSUMED to match, which would need to be justified against an actual "
-                "ride-comfort limit, not chosen to force a pass)."
+                f"ride_quality is FAIL: max_chassis_ramp_tracking_error_mm "
+                f"({max_ramp_error_mm:.1f} mm) exceeds ramp_error_budget_mm "
+                f"({ramp_error_budget_mm:.1f} mm) at the current "
+                f"{g['wheel_diameter_mm']:.0f} mm wheel diameter -- see "
+                "wheel_step_geometry above for whether the wheel rolls over the "
+                "nosing unaided at this diameter. A prior window-size sweep (0.01x "
+                "to 1.0x tread period) at a smaller wheel diameter showed this is "
+                "not purely a smoothing-tuning problem when the wheel cannot roll "
+                "over the rise unaided; re-run that sweep at the current diameter "
+                "before assuming the same root cause still applies. Closes either "
+                "by increasing wheel diameter until rolls_over_unaided is true, or "
+                "by justifying a larger chassis_ramp_error_budget_mm_ASSUMED "
+                "against an actual ride-comfort limit, not choosing it to force a "
+                "pass."
             ]
         ),
         "result": "PASS" if overall_pass else "FAIL",

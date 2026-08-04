@@ -406,6 +406,15 @@ def _add_corner(components: list[Component], g: dict, code: str, sx: int, sy: in
     x = sx * wb / 2
     y = sy * tr / 2
     z_axle = wheel_d / 2
+    # The tower/kingpin/steering/actuator coordinates below were tuned as
+    # absolute literals against the original 280 mm-diameter (140 mm radius)
+    # wheel. z0 rigidly translates that whole cassette up/down so it stays
+    # correctly positioned above whatever wheel radius parameters.json now
+    # specifies, without re-deriving each coordinate by hand. This is a
+    # simplification: a real swing-arm/pushrod linkage's angles would also
+    # change (not just translate) with a different wheel radius -- a full
+    # kinematic re-solve for the new radius is still open.
+    z0 = z_axle - 140.0
     tower_x = x - sx * 100
     rail_y = sy * (tr / 2 + 55)
     selected_stroke = g.get("corner_stroke_selected_mm_SRC", 300.0)
@@ -416,7 +425,7 @@ def _add_corner(components: list[Component], g: dict, code: str, sx: int, sy: in
 
     components.extend(
         [
-            _tube(prefix + "tire_280x75", f"{side} {lr} pneumatic tire envelope", "60", (x, y, z_axle), wheel_d / 2, wheel_d / 2 - 24, wheel_w, "Y"),
+            _tube(prefix + f"tire_{wheel_d:.0f}x{wheel_w:.0f}", f"{side} {lr} pneumatic tire envelope", "60", (x, y, z_axle), wheel_d / 2, wheel_d / 2 - 24, wheel_w, "Y"),
             _tube(prefix + "hub_shell", f"{side} {lr} wheel hub shell", "60", (x, y, z_axle), 64, 22, wheel_w + 24, "Y"),
             _cylinder(prefix + "live_axle", f"{side} {lr} live axle", "60", (x, y, z_axle), 8.5, 138, "Y"),
             _cylinder(prefix + "wheel_encoder_magnet_ring", f"{side} {lr} magnetic wheel encoder target ring", "67/69", (x, y + sy * 52, z_axle), 48, 5, "Y", "steel"),
@@ -432,66 +441,66 @@ def _add_corner(components: list[Component], g: dict, code: str, sx: int, sy: in
             _soft_box(prefix + "fork_bridge", f"{side} {lr} fork bridge", "60", (x, y, z_axle + 230), (132, 132, 34), 5),
             _soft_box(prefix + "fork_upper_double_shear_yoke", f"{side} {lr} fork upper double-shear yoke", "60", (x, y, z_axle + 278), (74, 148, 42), 4, material="steel"),
             _soft_box(prefix + "fork_lower_double_shear_yoke", f"{side} {lr} fork lower double-shear yoke", "60", (x, y, z_axle + 82), (74, 148, 42), 4, material="steel"),
-            _soft_box(prefix + "tower_lower_frame_lug", f"{side} {lr} bolted lower tower-to-frame lug", "61", (tower_x, rail_y, 370), (120, 36, 70), 5),
-            _soft_box(prefix + "tower_upper_frame_lug", f"{side} {lr} bolted upper tower-to-frame lug", "61", (tower_x, rail_y, 610), (120, 36, 70), 5),
-            _soft_box(prefix + "tower_top_thrust_block", f"{side} {lr} ball-screw top thrust bearing block", "62", (tower_x, y, 725), (96, 96, 42), 6, material="steel"),
-            _soft_box(prefix + "tower_bottom_thrust_block", f"{side} {lr} ball-screw lower support bearing block", "62", (tower_x, y, 300), (96, 96, 42), 6, material="steel"),
-            _cylinder(prefix + "steer_kingpin_bearing", f"{side} {lr} steering kingpin bearing stack", "60", (x, y, 445), 22, 270, "Z"),
-            _cylinder(prefix + "kingpin_upper_taper_bearing", f"{side} {lr} upper kingpin bearing cone envelope", "60", (x, y, 545), 27, 22, "Z", "steel"),
-            _cylinder(prefix + "kingpin_lower_taper_bearing", f"{side} {lr} lower kingpin bearing cone envelope", "60", (x, y, 345), 27, 22, "Z", "steel"),
-            _cylinder(prefix + "kingpin_preload_locknut", f"{side} {lr} kingpin preload locknut", "FASTENER", (x, y, 585), 18, 12, "Z", "black_oxide_steel"),
-            _soft_box(prefix + "steer_center_lock", f"{side} {lr} steering positive center lock", "66", (x, y, 590), (92, 68, 34), 5),
-            _soft_box(prefix + "suspension_tower_cassette", f"{side} {lr} vertical suspension cassette", "61", (tower_x, y, 510), (92, 82, 430), 6),
-            _cylinder(prefix + "swingarm_pivot_25mm", f"{side} {lr} 25 mm swingarm pivot shaft", "60", (x - sx * 108, y, 314), g["swingarm_pivot_diameter_mm"] / 2, 176, "Y"),
-            _rod_xz(prefix + "lower_swingarm_left_link", f"{side} {lr} lower swing arm left tubular link", "60", (tower_x, y + sy * 35, 360), (x, y + sy * 35, z_axle + 105), 11, "steel"),
-            _rod_xz(prefix + "lower_swingarm_right_link", f"{side} {lr} lower swing arm right tubular link", "60", (tower_x, y - sy * 35, 360), (x, y - sy * 35, z_axle + 105), 11, "steel"),
-            _rod_xz(prefix + "upper_reaction_left_link", f"{side} {lr} upper reaction left tubular link", "60", (tower_x, y + sy * 28, 515), (x, y + sy * 28, z_axle + 250), 9, "steel"),
-            _rod_xz(prefix + "upper_reaction_right_link", f"{side} {lr} upper reaction right tubular link", "60", (tower_x, y - sy * 28, 515), (x, y - sy * 28, z_axle + 250), 9, "steel"),
-            _soft_box(prefix + "swingarm_clevis_at_tower", f"{side} {lr} tower clevis for lower swing arm", "60", (tower_x, y, 360), (46, 118, 54), 4, material="steel"),
+            _soft_box(prefix + "tower_lower_frame_lug", f"{side} {lr} bolted lower tower-to-frame lug", "61", (tower_x, rail_y, 370 + z0), (120, 36, 70), 5),
+            _soft_box(prefix + "tower_upper_frame_lug", f"{side} {lr} bolted upper tower-to-frame lug", "61", (tower_x, rail_y, 610 + z0), (120, 36, 70), 5),
+            _soft_box(prefix + "tower_top_thrust_block", f"{side} {lr} ball-screw top thrust bearing block", "62", (tower_x, y, 725 + z0), (96, 96, 42), 6, material="steel"),
+            _soft_box(prefix + "tower_bottom_thrust_block", f"{side} {lr} ball-screw lower support bearing block", "62", (tower_x, y, 300 + z0), (96, 96, 42), 6, material="steel"),
+            _cylinder(prefix + "steer_kingpin_bearing", f"{side} {lr} steering kingpin bearing stack", "60", (x, y, 445 + z0), 22, 270, "Z"),
+            _cylinder(prefix + "kingpin_upper_taper_bearing", f"{side} {lr} upper kingpin bearing cone envelope", "60", (x, y, 545 + z0), 27, 22, "Z", "steel"),
+            _cylinder(prefix + "kingpin_lower_taper_bearing", f"{side} {lr} lower kingpin bearing cone envelope", "60", (x, y, 345 + z0), 27, 22, "Z", "steel"),
+            _cylinder(prefix + "kingpin_preload_locknut", f"{side} {lr} kingpin preload locknut", "FASTENER", (x, y, 585 + z0), 18, 12, "Z", "black_oxide_steel"),
+            _soft_box(prefix + "steer_center_lock", f"{side} {lr} steering positive center lock", "66", (x, y, 590 + z0), (92, 68, 34), 5),
+            _soft_box(prefix + "suspension_tower_cassette", f"{side} {lr} vertical suspension cassette", "61", (tower_x, y, 510 + z0), (92, 82, 430), 6),
+            _cylinder(prefix + "swingarm_pivot_25mm", f"{side} {lr} 25 mm swingarm pivot shaft", "60", (x - sx * 108, y, 314 + z0), g["swingarm_pivot_diameter_mm"] / 2, 176, "Y"),
+            _rod_xz(prefix + "lower_swingarm_left_link", f"{side} {lr} lower swing arm left tubular link", "60", (tower_x, y + sy * 35, 360 + z0), (x, y + sy * 35, z_axle + 105), 11, "steel"),
+            _rod_xz(prefix + "lower_swingarm_right_link", f"{side} {lr} lower swing arm right tubular link", "60", (tower_x, y - sy * 35, 360 + z0), (x, y - sy * 35, z_axle + 105), 11, "steel"),
+            _rod_xz(prefix + "upper_reaction_left_link", f"{side} {lr} upper reaction left tubular link", "60", (tower_x, y + sy * 28, 515 + z0), (x, y + sy * 28, z_axle + 250), 9, "steel"),
+            _rod_xz(prefix + "upper_reaction_right_link", f"{side} {lr} upper reaction right tubular link", "60", (tower_x, y - sy * 28, 515 + z0), (x, y - sy * 28, z_axle + 250), 9, "steel"),
+            _soft_box(prefix + "swingarm_clevis_at_tower", f"{side} {lr} tower clevis for lower swing arm", "60", (tower_x, y, 360 + z0), (46, 118, 54), 4, material="steel"),
             _soft_box(prefix + "swingarm_clevis_at_fork", f"{side} {lr} fork clevis for lower swing arm", "60", (x, y, z_axle + 105), (54, 118, 54), 4, material="steel"),
-            _cylinder(prefix + "passive_spring_damper", f"{side} {lr} passive spring damper envelope", "61", (tower_x + sx * 42, y, 510), 18, 280, "Z"),
-            _cylinder(prefix + "bnk2010_ball_screw", f"{side} {lr} THK BNK2010 ball screw 499 mm shaft envelope", "62", (tower_x, y, 512), g["ball_screw_diameter_mm_SRC"] / 2, screw_len, "Z"),
-            _cylinder(prefix + "stroke_300mm_travel_datum", f"{side} {lr} selected 300 mm independent corner stroke datum", "62", (tower_x + sx * 34, y, 512), 2.5, selected_stroke, "Z", "copper"),
-            _box(prefix + "ballnut_carriage_bridge", f"{side} {lr} ballnut carriage bridge", "62", (tower_x, y, 472), (82, 104, 54)),
-            _soft_box(prefix + "moving_slider_plate", f"{side} {lr} guided moving slider plate connecting ballnut to links", "62", (tower_x + sx * 4, y, 472), (110, 132, 18), 4, material="steel"),
-            _soft_box(prefix + "slider_left_double_shear_tab", f"{side} {lr} slider left pushrod clevis tab", "62", (tower_x + sx * 22, y + sy * 58, 472), (44, 16, 88), 3, material="steel"),
-            _soft_box(prefix + "slider_right_double_shear_tab", f"{side} {lr} slider right pushrod clevis tab", "62", (tower_x + sx * 22, y - sy * 58, 472), (44, 16, 88), 3, material="steel"),
-            _cylinder(prefix + "slider_rocker_shaft", f"{side} {lr} through rocker shaft linking slider tabs", "62", (tower_x + sx * 22, y, 472), 8, 150, "Y", "steel"),
-            _soft_box(prefix + "slider_bellcrank_left_plate", f"{side} {lr} left bellcrank plate from ballnut slider to pushrods", "62", (tower_x + sx * 34, y + sy * 38, 440), (58, 12, 116), 3, sx * 8, material="steel"),
-            _soft_box(prefix + "slider_bellcrank_right_plate", f"{side} {lr} right bellcrank plate from ballnut slider to pushrods", "62", (tower_x + sx * 34, y - sy * 38, 440), (58, 12, 116), 3, sx * 8, material="steel"),
-            _rod_xz(prefix + "left_pushrod_slider_to_fork", f"{side} {lr} left M10 rod-end pushrod from slider bellcrank to fork yoke", "62", (tower_x + sx * 45, y + sy * 42, 440), (x, y + sy * 42, z_axle + 278), 7, "steel"),
-            _rod_xz(prefix + "right_pushrod_slider_to_fork", f"{side} {lr} right M10 rod-end pushrod from slider bellcrank to fork yoke", "62", (tower_x + sx * 45, y - sy * 42, 440), (x, y - sy * 42, z_axle + 278), 7, "steel"),
-            _box(prefix + "hsr15_linear_guide_rail_a", f"{side} {lr} THK HSR15 vertical guide rail A", "63", (tower_x - 24, y + sy * 31, 508), (16, 12, 400)),
-            _box(prefix + "hsr15_linear_guide_rail_b", f"{side} {lr} THK HSR15 vertical guide rail B", "63", (tower_x + 24, y - sy * 31, 508), (16, 12, 400)),
-            _soft_box(prefix + "magnetic_linear_scale", f"{side} {lr} absolute linear position scale for corner actuator", "67/68", (tower_x + sx * 58, y, 508), (10, 16, 330), 2, material="electronics"),
-            _soft_box(prefix + "linear_scale_read_head", f"{side} {lr} moving read head tied to ballnut slider", "67/68", (tower_x + sx * 58, y, 472), (24, 24, 30), 2, material="electronics"),
-            _soft_box(prefix + "hsr15c_guide_block_a", f"{side} {lr} THK HSR15C guide block A", "63", (tower_x - 24, y + sy * 31, 472), (24, 47, 56.6), 3, material="steel"),
-            _soft_box(prefix + "hsr15c_guide_block_b", f"{side} {lr} THK HSR15C guide block B", "63", (tower_x + 24, y - sy * 31, 472), (24, 47, 56.6), 3, material="steel"),
-            _soft_box(prefix + "actuator_top_motor_mount_plate", f"{side} {lr} coaxial motor mount plate bolted to screw thrust block", "64/65", (tower_x, y, 748), (86, 86, 10), 3, material="steel"),
-            _cylinder(prefix + "ruland_beam_coupling_motor_to_screw", f"{side} {lr} flexible coupling between GPX52 output and BNK2010 screw", "64/65", (tower_x, y, 735), 16, 32, "Z", "steel"),
-            _cylinder(prefix + "screw_upper_shaft_collar", f"{side} {lr} clamp collar locating screw shaft below coupling", "62", (tower_x, y, 712), 17, 12, "Z", "black_oxide_steel"),
-            _cylinder(prefix + "gpx52_gearhead", f"{side} {lr} Maxon GPX52 3.9:1 coaxial gearhead", "65", (tower_x, y, 790), 26, 50.2, "Z"),
-            _cylinder(prefix + "actuator_motor_eci52", f"{side} {lr} Maxon EC-i 52 part 633919 actuator motor", "64", (tower_x, y, 860), 26, 90, "Z"),
-            _cylinder(prefix + "ab44_power_off_holding_brake", f"{side} {lr} maxon AB 44 part 386054 2.5 Nm normally-engaged motor brake", "66", (tower_x, y, 926), 22, 26.9, "Z", "steel"),
-            _tube(prefix + "motor_stack_protective_shroud", f"{side} {lr} sealed protective tube shroud around motor brake stack", "64/65/66", (tower_x, y, 858), 36, 28, 190, "Z", "plastic"),
-            _box(prefix + "anti_drop_rack", f"{side} {lr} anti drop rack", "66", (tower_x - sx * 68, y, 510), (20, 24, 332)),
-            _box(prefix + "anti_drop_pawl", f"{side} {lr} primary anti drop pawl", "66", (tower_x - sx * 46, y + sy * 34, 390), (42, 18, 92)),
-            _soft_box(prefix + "upper_limit_switch", f"{side} {lr} upper travel limit switch", "67/68", (tower_x + sx * 70, y, 690), (38, 18, 24), 3, material="electronics"),
-            _soft_box(prefix + "lower_limit_switch", f"{side} {lr} lower travel limit switch", "67/68", (tower_x + sx * 70, y, 332), (38, 18, 24), 3, material="electronics"),
-            _soft_box(prefix + "corner_load_pin_interface_module", f"{side} {lr} load-sensing pin amplifier and strain-relief module", "67/68", (tower_x + sx * 84, y, 430), (48, 38, 30), 3, material="electronics"),
-            _cylinder(prefix + "load_pin_signal_harness_loop", f"{side} {lr} load pin signal harness loop", "67/68", (tower_x + sx * 60, y, 430), 4, 78, "X", "plastic"),
-            _soft_box(prefix + "upper_polyurethane_bump_stop", f"{side} {lr} upper compression bump stop", "66", (tower_x + sx * 4, y, 688), (52, 52, 22), 6, material="rubber"),
-            _soft_box(prefix + "lower_polyurethane_bump_stop", f"{side} {lr} lower rebound bump stop", "66", (tower_x + sx * 4, y, 328), (52, 52, 22), 6, material="rubber"),
+            _cylinder(prefix + "passive_spring_damper", f"{side} {lr} passive spring damper envelope", "61", (tower_x + sx * 42, y, 510 + z0), 18, 280, "Z"),
+            _cylinder(prefix + "bnk2010_ball_screw", f"{side} {lr} THK BNK2010 ball screw 499 mm shaft envelope", "62", (tower_x, y, 512 + z0), g["ball_screw_diameter_mm_SRC"] / 2, screw_len, "Z"),
+            _cylinder(prefix + "stroke_300mm_travel_datum", f"{side} {lr} selected 300 mm independent corner stroke datum", "62", (tower_x + sx * 34, y, 512 + z0), 2.5, selected_stroke, "Z", "copper"),
+            _box(prefix + "ballnut_carriage_bridge", f"{side} {lr} ballnut carriage bridge", "62", (tower_x, y, 472 + z0), (82, 104, 54)),
+            _soft_box(prefix + "moving_slider_plate", f"{side} {lr} guided moving slider plate connecting ballnut to links", "62", (tower_x + sx * 4, y, 472 + z0), (110, 132, 18), 4, material="steel"),
+            _soft_box(prefix + "slider_left_double_shear_tab", f"{side} {lr} slider left pushrod clevis tab", "62", (tower_x + sx * 22, y + sy * 58, 472 + z0), (44, 16, 88), 3, material="steel"),
+            _soft_box(prefix + "slider_right_double_shear_tab", f"{side} {lr} slider right pushrod clevis tab", "62", (tower_x + sx * 22, y - sy * 58, 472 + z0), (44, 16, 88), 3, material="steel"),
+            _cylinder(prefix + "slider_rocker_shaft", f"{side} {lr} through rocker shaft linking slider tabs", "62", (tower_x + sx * 22, y, 472 + z0), 8, 150, "Y", "steel"),
+            _soft_box(prefix + "slider_bellcrank_left_plate", f"{side} {lr} left bellcrank plate from ballnut slider to pushrods", "62", (tower_x + sx * 34, y + sy * 38, 440 + z0), (58, 12, 116), 3, sx * 8, material="steel"),
+            _soft_box(prefix + "slider_bellcrank_right_plate", f"{side} {lr} right bellcrank plate from ballnut slider to pushrods", "62", (tower_x + sx * 34, y - sy * 38, 440 + z0), (58, 12, 116), 3, sx * 8, material="steel"),
+            _rod_xz(prefix + "left_pushrod_slider_to_fork", f"{side} {lr} left M10 rod-end pushrod from slider bellcrank to fork yoke", "62", (tower_x + sx * 45, y + sy * 42, 440 + z0), (x, y + sy * 42, z_axle + 278), 7, "steel"),
+            _rod_xz(prefix + "right_pushrod_slider_to_fork", f"{side} {lr} right M10 rod-end pushrod from slider bellcrank to fork yoke", "62", (tower_x + sx * 45, y - sy * 42, 440 + z0), (x, y - sy * 42, z_axle + 278), 7, "steel"),
+            _box(prefix + "hsr15_linear_guide_rail_a", f"{side} {lr} THK HSR15 vertical guide rail A", "63", (tower_x - 24, y + sy * 31, 508 + z0), (16, 12, 400)),
+            _box(prefix + "hsr15_linear_guide_rail_b", f"{side} {lr} THK HSR15 vertical guide rail B", "63", (tower_x + 24, y - sy * 31, 508 + z0), (16, 12, 400)),
+            _soft_box(prefix + "magnetic_linear_scale", f"{side} {lr} absolute linear position scale for corner actuator", "67/68", (tower_x + sx * 58, y, 508 + z0), (10, 16, 330), 2, material="electronics"),
+            _soft_box(prefix + "linear_scale_read_head", f"{side} {lr} moving read head tied to ballnut slider", "67/68", (tower_x + sx * 58, y, 472 + z0), (24, 24, 30), 2, material="electronics"),
+            _soft_box(prefix + "hsr15c_guide_block_a", f"{side} {lr} THK HSR15C guide block A", "63", (tower_x - 24, y + sy * 31, 472 + z0), (24, 47, 56.6), 3, material="steel"),
+            _soft_box(prefix + "hsr15c_guide_block_b", f"{side} {lr} THK HSR15C guide block B", "63", (tower_x + 24, y - sy * 31, 472 + z0), (24, 47, 56.6), 3, material="steel"),
+            _soft_box(prefix + "actuator_top_motor_mount_plate", f"{side} {lr} coaxial motor mount plate bolted to screw thrust block", "64/65", (tower_x, y, 748 + z0), (86, 86, 10), 3, material="steel"),
+            _cylinder(prefix + "ruland_beam_coupling_motor_to_screw", f"{side} {lr} flexible coupling between GPX52 output and BNK2010 screw", "64/65", (tower_x, y, 735 + z0), 16, 32, "Z", "steel"),
+            _cylinder(prefix + "screw_upper_shaft_collar", f"{side} {lr} clamp collar locating screw shaft below coupling", "62", (tower_x, y, 712 + z0), 17, 12, "Z", "black_oxide_steel"),
+            _cylinder(prefix + "gpx52_gearhead", f"{side} {lr} Maxon GPX52 3.9:1 coaxial gearhead", "65", (tower_x, y, 790 + z0), 26, 50.2, "Z"),
+            _cylinder(prefix + "actuator_motor_eci52", f"{side} {lr} Maxon EC-i 52 part 633919 actuator motor", "64", (tower_x, y, 860 + z0), 26, 90, "Z"),
+            _cylinder(prefix + "ab44_power_off_holding_brake", f"{side} {lr} maxon AB 44 part 386054 2.5 Nm normally-engaged motor brake", "66", (tower_x, y, 926 + z0), 22, 26.9, "Z", "steel"),
+            _tube(prefix + "motor_stack_protective_shroud", f"{side} {lr} sealed protective tube shroud around motor brake stack", "64/65/66", (tower_x, y, 858 + z0), 36, 28, 190, "Z", "plastic"),
+            _box(prefix + "anti_drop_rack", f"{side} {lr} anti drop rack", "66", (tower_x - sx * 68, y, 510 + z0), (20, 24, 332)),
+            _box(prefix + "anti_drop_pawl", f"{side} {lr} primary anti drop pawl", "66", (tower_x - sx * 46, y + sy * 34, 390 + z0), (42, 18, 92)),
+            _soft_box(prefix + "upper_limit_switch", f"{side} {lr} upper travel limit switch", "67/68", (tower_x + sx * 70, y, 690 + z0), (38, 18, 24), 3, material="electronics"),
+            _soft_box(prefix + "lower_limit_switch", f"{side} {lr} lower travel limit switch", "67/68", (tower_x + sx * 70, y, 332 + z0), (38, 18, 24), 3, material="electronics"),
+            _soft_box(prefix + "corner_load_pin_interface_module", f"{side} {lr} load-sensing pin amplifier and strain-relief module", "67/68", (tower_x + sx * 84, y, 430 + z0), (48, 38, 30), 3, material="electronics"),
+            _cylinder(prefix + "load_pin_signal_harness_loop", f"{side} {lr} load pin signal harness loop", "67/68", (tower_x + sx * 60, y, 430 + z0), 4, 78, "X", "plastic"),
+            _soft_box(prefix + "upper_polyurethane_bump_stop", f"{side} {lr} upper compression bump stop", "66", (tower_x + sx * 4, y, 688 + z0), (52, 52, 22), 6, material="rubber"),
+            _soft_box(prefix + "lower_polyurethane_bump_stop", f"{side} {lr} lower rebound bump stop", "66", (tower_x + sx * 4, y, 328 + z0), (52, 52, 22), 6, material="rubber"),
             _cylinder(prefix + "bg75_wheel_drive_motor", f"{side} {lr} Dunkermotoren BG75-class wheel drive motor envelope", "69", (x, y - sy * 122, z_axle), 37.5, 96, "Y"),
             _cylinder(prefix + "plg75_wheel_planetary_gearbox", f"{side} {lr} PLG75-class planetary gearbox wheel reduction envelope", "69", (x, y - sy * 70, z_axle), 39, 58, "Y", "steel"),
-            _soft_box(prefix + "deutsch_dtp_power_connector", f"{side} {lr} TE DEUTSCH DTP sealed power connector", "69", (tower_x + sx * 82, y + sy * 96, 610), (47.27, 27.15, 22.05), 3, material="plastic"),
-            _soft_box(prefix + "deutsch_dt_signal_connector", f"{side} {lr} TE DEUTSCH DT sealed signal connector", "67/68", (tower_x + sx * 82, y - sy * 96, 650), (44.02, 22.25, 36.45), 3, material="plastic"),
-            _cylinder(prefix + "corner_power_harness_conduit", f"{side} {lr} sealed power harness conduit", "69", (tower_x + sx * 40, y + sy * 96, 610), 7, 160, "X", "plastic"),
-            _cylinder(prefix + "corner_signal_harness_conduit", f"{side} {lr} sealed signal harness conduit", "67/68", (tower_x + sx * 40, y - sy * 96, 620), 5, 160, "X", "plastic"),
-            _soft_box(prefix + "harness_backbone_rail", f"{side} {lr} harness backbone rail tied to suspension tower", "67/68/69", (tower_x + sx * 96, y + sy * 116, 535), (28, 28, 390), 3, material="steel"),
-            _soft_box(prefix + "harness_backbone_standoff_upper", f"{side} {lr} upper harness rail standoff to tower cassette", "67/68/69", (tower_x + sx * 48, y + sy * 58, 642), (118, 128, 18), 3, material="steel"),
-            _soft_box(prefix + "harness_backbone_standoff_lower", f"{side} {lr} lower harness rail standoff to tower cassette", "67/68/69", (tower_x + sx * 48, y + sy * 58, 426), (118, 128, 18), 3, material="steel"),
-            _gusset(prefix + "tower_frame_gusset", f"{side} {lr} triangular tower to rail gusset", "61", (tower_x + sx * 42, y, 375), 165, 160, 8, sx),
+            _soft_box(prefix + "deutsch_dtp_power_connector", f"{side} {lr} TE DEUTSCH DTP sealed power connector", "69", (tower_x + sx * 82, y + sy * 96, 610 + z0), (47.27, 27.15, 22.05), 3, material="plastic"),
+            _soft_box(prefix + "deutsch_dt_signal_connector", f"{side} {lr} TE DEUTSCH DT sealed signal connector", "67/68", (tower_x + sx * 82, y - sy * 96, 650 + z0), (44.02, 22.25, 36.45), 3, material="plastic"),
+            _cylinder(prefix + "corner_power_harness_conduit", f"{side} {lr} sealed power harness conduit", "69", (tower_x + sx * 40, y + sy * 96, 610 + z0), 7, 160, "X", "plastic"),
+            _cylinder(prefix + "corner_signal_harness_conduit", f"{side} {lr} sealed signal harness conduit", "67/68", (tower_x + sx * 40, y - sy * 96, 620 + z0), 5, 160, "X", "plastic"),
+            _soft_box(prefix + "harness_backbone_rail", f"{side} {lr} harness backbone rail tied to suspension tower", "67/68/69", (tower_x + sx * 96, y + sy * 116, 535 + z0), (28, 28, 390), 3, material="steel"),
+            _soft_box(prefix + "harness_backbone_standoff_upper", f"{side} {lr} upper harness rail standoff to tower cassette", "67/68/69", (tower_x + sx * 48, y + sy * 58, 642 + z0), (118, 128, 18), 3, material="steel"),
+            _soft_box(prefix + "harness_backbone_standoff_lower", f"{side} {lr} lower harness rail standoff to tower cassette", "67/68/69", (tower_x + sx * 48, y + sy * 58, 426 + z0), (118, 128, 18), 3, material="steel"),
+            _gusset(prefix + "tower_frame_gusset", f"{side} {lr} triangular tower to rail gusset", "61", (tower_x + sx * 42, y, 375 + z0), 165, 160, 8, sx),
         ]
     )
 
@@ -505,7 +514,7 @@ def _add_corner(components: list[Component], g: dict, code: str, sx: int, sy: in
             prefix + "corner_tower_shroud",
             f"{side} {lr} weather/anti-pinch cover over the corner actuator stack",
             "61/62/64/65/66",
-            (tower_x, y, 630),
+            (tower_x, y, 630 + z0),
             (180, 180, 720),
             4.0,
             50.0,
@@ -514,7 +523,7 @@ def _add_corner(components: list[Component], g: dict, code: str, sx: int, sy: in
     )
 
     for motor_bolt_idx, (mx, my) in enumerate(((-28, -28), (-28, 28), (28, -28), (28, 28))):
-        components.extend(_bolt_y(prefix + f"motor_mount_m5_bolt_{motor_bolt_idx}", (tower_x + mx, y + my, 748), 96, 5))
+        components.extend(_bolt_y(prefix + f"motor_mount_m5_bolt_{motor_bolt_idx}", (tower_x + mx, y + my, 748 + z0), 96, 5))
 
     for lug_idx, lug_angle in enumerate(range(0, 360, 15)):
         components.append(
@@ -539,43 +548,47 @@ def _add_corner(components: list[Component], g: dict, code: str, sx: int, sy: in
     for clip_idx, clip_z in enumerate((360, 410, 460, 510, 560, 610, 660, 710)):
         clip_x = tower_x + sx * 96
         clip_y = y + sy * 116
+        clip_z = clip_z + z0
         components.append(_soft_box(prefix + f"hellermann_hdm312_harness_mount_{clip_idx}", f"{side} {lr} HellermannTyton HDM312 harness tie mount", "67/68/69", (clip_x, clip_y, clip_z), (36.3, 19.3, 16.7), 2, material="plastic"))
         components.extend(_bolt_y(prefix + f"harness_mount_m5_screw_{clip_idx}", (clip_x, clip_y, clip_z), 26, 5))
 
     for contact_idx, contact_y in enumerate((-9, 9)):
-        components.append(_cylinder(prefix + f"dtp_size12_power_contact_{contact_idx}_positive", f"{side} {lr} DEUTSCH DTP size 12 power contact", "69", (tower_x + sx * 82, y + sy * (96 + contact_y), 615), 2.1, 23, "Z", "copper"))
-        components.append(_cylinder(prefix + f"dtp_size12_power_contact_{contact_idx}_negative", f"{side} {lr} DEUTSCH DTP size 12 power contact", "69", (tower_x + sx * 82, y + sy * (96 + contact_y), 605), 2.1, 23, "Z", "copper"))
-    components.append(_soft_box(prefix + "dtp_wedgelock", f"{side} {lr} DEUTSCH DTP wedgelock/contact retainer", "69", (tower_x + sx * 82, y + sy * 96, 596), (38, 18, 6), 1, material="plastic"))
+        components.append(_cylinder(prefix + f"dtp_size12_power_contact_{contact_idx}_positive", f"{side} {lr} DEUTSCH DTP size 12 power contact", "69", (tower_x + sx * 82, y + sy * (96 + contact_y), 615 + z0), 2.1, 23, "Z", "copper"))
+        components.append(_cylinder(prefix + f"dtp_size12_power_contact_{contact_idx}_negative", f"{side} {lr} DEUTSCH DTP size 12 power contact", "69", (tower_x + sx * 82, y + sy * (96 + contact_y), 605 + z0), 2.1, 23, "Z", "copper"))
+    components.append(_soft_box(prefix + "dtp_wedgelock", f"{side} {lr} DEUTSCH DTP wedgelock/contact retainer", "69", (tower_x + sx * 82, y + sy * 96, 596 + z0), (38, 18, 6), 1, material="plastic"))
     for contact_idx, contact_y in enumerate((-10.5, -3.5, 3.5, 10.5)):
-        components.append(_cylinder(prefix + f"dt_size16_signal_contact_upper_{contact_idx}", f"{side} {lr} DEUTSCH DT size 16 signal contact", "67/68", (tower_x + sx * 82, y - sy * (96 + contact_y), 657), 1.3, 20, "Z", "copper"))
-        components.append(_cylinder(prefix + f"dt_size16_signal_contact_lower_{contact_idx}", f"{side} {lr} DEUTSCH DT size 16 signal contact", "67/68", (tower_x + sx * 82, y - sy * (96 + contact_y), 643), 1.3, 20, "Z", "copper"))
-    components.append(_soft_box(prefix + "dt_wedgelock", f"{side} {lr} DEUTSCH DT wedgelock/contact retainer", "67/68", (tower_x + sx * 82, y - sy * 96, 632), (36, 18, 5), 1, material="plastic"))
+        components.append(_cylinder(prefix + f"dt_size16_signal_contact_upper_{contact_idx}", f"{side} {lr} DEUTSCH DT size 16 signal contact", "67/68", (tower_x + sx * 82, y - sy * (96 + contact_y), 657 + z0), 1.3, 20, "Z", "copper"))
+        components.append(_cylinder(prefix + f"dt_size16_signal_contact_lower_{contact_idx}", f"{side} {lr} DEUTSCH DT size 16 signal contact", "67/68", (tower_x + sx * 82, y - sy * (96 + contact_y), 643 + z0), 1.3, 20, "Z", "copper"))
+    components.append(_soft_box(prefix + "dt_wedgelock", f"{side} {lr} DEUTSCH DT wedgelock/contact retainer", "67/68", (tower_x + sx * 82, y - sy * 96, 632 + z0), (36, 18, 5), 1, material="plastic"))
 
     for sensor_idx, (sensor_x, sensor_y, sensor_z) in enumerate(
         (
             (x + sx * 32, y + sy * 61, z_axle + 18),
             (x + sx * 56, y + sy * 61, z_axle + 18),
-            (tower_x + sx * 58, y - 10, 472),
-            (tower_x + sx * 58, y + 10, 472),
-            (tower_x + sx * 84, y - 12, 430),
-            (tower_x + sx * 84, y + 12, 430),
+            (tower_x + sx * 58, y - 10, 472 + z0),
+            (tower_x + sx * 58, y + 10, 472 + z0),
+            (tower_x + sx * 84, y - 12, 430 + z0),
+            (tower_x + sx * 84, y + 12, 430 + z0),
         )
     ):
         components.extend(_bolt_y(prefix + f"sensor_mount_m3_screw_{sensor_idx}", (sensor_x, sensor_y, sensor_z), 18, 3))
 
     for i, z_mount in enumerate((370, 610)):
+        z_mount = z_mount + z0
         components.extend(_bolt_y(prefix + f"tower_lug_m8_{i}_upper", (tower_x - 32, rail_y, z_mount + 18), 76))
         components.extend(_bolt_y(prefix + f"tower_lug_m8_{i}_lower", (tower_x + 32, rail_y, z_mount - 18), 76))
 
     for i, z_fastener in enumerate((350, 430, 510, 590, 670)):
+        z_fastener = z_fastener + z0
         components.extend(_bolt_y(prefix + f"guide_rail_a_m5_{i}", (tower_x - 24, y + sy * 46, z_fastener), 28, 5))
         components.extend(_bolt_y(prefix + f"guide_rail_b_m5_{i}", (tower_x + 24, y - sy * 46, z_fastener), 28, 5))
 
     for i, z_block in enumerate((300, 725)):
+        z_block = z_block + z0
         components.extend(_bolt_y(prefix + f"thrust_block_m8_a_{i}", (tower_x - 28, y, z_block), 110))
         components.extend(_bolt_y(prefix + f"thrust_block_m8_b_{i}", (tower_x + 28, y, z_block), 110))
 
-    for i, pin_z in enumerate((z_axle + 105, z_axle + 250, 360, 515)):
+    for i, pin_z in enumerate((z_axle + 105, z_axle + 250, 360 + z0, 515 + z0)):
         pin_x = x if i < 2 else tower_x
         components.extend(_bolt_y(prefix + f"suspension_link_pin_{i}", (pin_x, y, pin_z), 146, 10))
         components.append(_tube(prefix + f"iglidur_g_pivot_bushing_{i}", f"{side} {lr} iglidur G pivot bushing sleeve", "60", (pin_x, y, pin_z), 15, 10.5, 104, "Y", "plastic"))
@@ -583,7 +596,7 @@ def _add_corner(components: list[Component], g: dict, code: str, sx: int, sy: in
         components.append(_cylinder(prefix + f"load_sensing_pivot_pin_{i}", f"{side} {lr} load-sensing suspension pivot pin element", "67/68", (pin_x, y, pin_z), 5.0, 120, "Y", "steel"))
         components.append(_cylinder(prefix + f"din985_m10_locknut_{i}", f"{side} {lr} M10 prevailing torque lock nut at suspension pin", "FASTENER", (pin_x, y - sy * 84, pin_z), 12, 10, "Y", "black_oxide_steel"))
 
-    for i, (px, pz) in enumerate(((tower_x + sx * 45, 440), (x, z_axle + 278))):
+    for i, (px, pz) in enumerate(((tower_x + sx * 45, 440 + z0), (x, z_axle + 278))):
         components.extend(_bolt_y(prefix + f"pushrod_clevis_m10_{i}", (px, y + sy * 42, pz), 92, 10))
         components.append(_tube(prefix + f"pushrod_aurora_m10_left_rod_end_{i}", f"{side} {lr} left AM-M10T pushrod rod-end head", "62", (px, y + sy * 42, pz), 13.5, 5.0, 14.0, "Y", "steel"))
         components.append(_cylinder(prefix + f"pushrod_left_m10_jam_nut_{i}", f"{side} {lr} left pushrod M10 jam nut", "FASTENER", (px - sx * 28, y + sy * 42, pz), 11, 7, "X", "black_oxide_steel"))
@@ -595,7 +608,7 @@ def _add_corner(components: list[Component], g: dict, code: str, sx: int, sy: in
         components.extend(
             [
                 _cylinder(prefix + "antirollback_dog_lock", f"{side} {lr} rear anti rollback dog lock", "66/70", (x, y + sy * 96, z_axle), 42, 26, "Y"),
-                _box(prefix + "rear_module_mount_bracket", f"{side} {lr} rear module mounting bracket", "70", (x - sx * 122, y, 332), (30, 194, 184)),
+                _box(prefix + "rear_module_mount_bracket", f"{side} {lr} rear module mounting bracket", "70", (x - sx * 122, y, 332 + z0), (30, 194, 184)),
             ]
         )
     else:
@@ -827,6 +840,7 @@ def export_isometric_views(params: dict, out_dir: Path) -> None:
 
 def export_model(params: dict, out_dir: Path) -> dict:
     out_dir.mkdir(parents=True, exist_ok=True)
+    g = params["geometry"]
     components = build_components(params)
     compound = _compound(components)
 
@@ -1039,7 +1053,7 @@ def export_model(params: dict, out_dir: Path) -> dict:
             {
                 "callout": "60",
                 "part": "Molded pneumatic stair-grip tire tread lug pattern",
-                "modeled_as": "twelve molded rubber tread lugs per 280 x 75 mm tire, four ground-contact wheels only",
+                "modeled_as": f"twelve molded rubber tread lugs per {g['wheel_diameter_mm']:.0f} x {g['wheel_width_mm']:.0f} mm tire, four ground-contact wheels only",
                 "source_values": {
                     "tread_lugs_per_wheel": 12,
                     "ground_contact_wheel_count": 4,

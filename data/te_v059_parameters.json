@@ -13,7 +13,7 @@
     "truth_boundary": "Mechanism CAD generation only. No native FEA, certification, or physical verification claimed."
   },
   "geometry": {
-    "wheel_diameter_mm": 280.0,
+    "wheel_diameter_mm": 430.0,
     "wheel_width_mm": 75.0,
     "wheelbase_mm": 720.0,
     "track_mm": 620.0,

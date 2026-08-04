@@ -91,6 +91,12 @@ class Thresholds:
     landing_clear_rise_mm: float = 40.0
     stationary_speed_mps: float = 0.02
     single_corner_spread_mm: float = 60.0
+    #: Attitude envelope from the redundant IMU pair. The architecture stair
+    #: angle is 36.03 deg (parameters.json stair_angle_deg_CALC); anything
+    #: appreciably beyond it means the chassis is on something steeper than the
+    #: reference staircase, or is tipping. Margin is ASSUMED, not derived from
+    #: a tip-over analysis -- that needs the dynamic model and a real CG study.
+    max_chassis_pitch_deg: float = 45.0
 
 
 @dataclass(frozen=True)
@@ -107,6 +113,7 @@ class Predicates:
     landing_reached: bool
     single_corner_event: bool
     stationary: bool
+    pitch_within_envelope: bool
     fault: bool
 
 
@@ -137,6 +144,7 @@ def derive_predicates(f: SensorFrame, t: Thresholds | None = None) -> Predicates
             and f.corner_extension_spread_mm >= t.single_corner_spread_mm
         ),
         stationary=abs(f.wheel_speed_mps) <= t.stationary_speed_mps,
+        pitch_within_envelope=abs(f.chassis_pitch_deg) <= t.max_chassis_pitch_deg,
         fault=f.fault_present,
     )
 
@@ -207,7 +215,19 @@ def step(state: State, p: Predicates) -> tuple[State, Outputs]:
     if p.fault:
         return State.FAULT_HOLD, _hold(state in ON_STAIR_STATES, "fault")
 
-    # 2. Losing the deadman always removes drive authority. On a staircase this
+    # 2. Attitude interlock. The redundant IMU pair reports the chassis is
+    #    outside its safe pitch envelope: either something steeper than the
+    #    reference staircase, or the vehicle is tipping. Remove drive authority
+    #    and sit on the mechanical holds. Deliberately NOT latched like a
+    #    fault -- recovering attitude should not require a maintenance action --
+    #    but because recovery lands in a hold state, resuming still re-runs the
+    #    full committal test rather than silently continuing the climb.
+    if not p.pitch_within_envelope:
+        if state in ON_STAIR_STATES:
+            return State.MID_CLIMB_HOLD, _hold(True, "attitude_limit")
+        return State.STANDBY, _hold(False, "attitude_limit")
+
+    # 3. Losing the deadman always removes drive authority. On a staircase this
     #    is a mid-climb hold on the pawls, not a coast or a free-fall; on flat
     #    ground it is a normal stop.
     if not p.deadman:

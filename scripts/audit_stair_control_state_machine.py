@@ -113,6 +113,17 @@ def main() -> None:
                 fail("brakes_and_drive_exclusive", state, p,
                      "holding brakes engaged while wheel drive enabled")
 
+            # 8. Attitude interlock: outside the safe pitch envelope the
+            #    vehicle must be on its mechanical holds with no actuation,
+            #    whatever else the inputs say.
+            if not p.pitch_within_envelope:
+                if out.wheel_drive_enabled or out.corner_actuators_enabled:
+                    fail("attitude_limit_disables_actuation", state, p,
+                         "actuation enabled outside the safe pitch envelope")
+                if not (out.holding_brakes_engaged and out.anti_drop_pawls_engaged):
+                    fail("attitude_limit_engages_holds", state, p,
+                         "excess pitch did not engage both holding brakes and pawls")
+
     # 8. No single point of failure on stair committal. For each independent
     #    intent condition, no state and no combination of the others may reach
     #    a driving-on-stairs state while that one condition is false. This is
@@ -166,6 +177,10 @@ def main() -> None:
         ),
         "committal_dwell_positive": t.min_committal_dwell_s > 0.0,
         "handle_force_positive": t.min_handle_force_N > 0.0,
+        # The attitude envelope has to admit the architecture stair angle
+        # (36.03 deg, parameters.json stair_angle_deg_CALC) or the interlock
+        # would trip on the very staircase the vehicle is designed to climb.
+        "pitch_envelope_admits_stair_angle": t.max_chassis_pitch_deg > 36.03,
     }
     for name, ok in threshold_checks.items():
         if not ok:
@@ -229,6 +244,8 @@ def main() -> None:
             "drive_implies_deadman",
             "brakes_and_drive_exclusive",
             "committal_no_single_point_of_failure",
+            "attitude_limit_disables_actuation",
+            "attitude_limit_engages_holds",
             "threshold_consistency",
             "stair_and_single_corner_mutually_exclusive",
         ],

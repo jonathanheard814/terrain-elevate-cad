@@ -14,6 +14,7 @@ on:
       - "scripts/audit_design_acceptance.py"
       - "scripts/audit_physics_basis.py"
       - "scripts/audit_power_budget.py"
+      - "scripts/audit_stair_control_state_machine.py"
       - "src/terrain_elevate/**"
       - "validate_outputs.py"
       - "data/te_v059_parameters.json"
@@ -37,6 +38,7 @@ on:
       - "scripts/audit_design_acceptance.py"
       - "scripts/audit_physics_basis.py"
       - "scripts/audit_power_budget.py"
+      - "scripts/audit_stair_control_state_machine.py"
       - "src/terrain_elevate/**"
       - "validate_outputs.py"
       - "data/te_v059_parameters.json"
@@ -90,6 +92,9 @@ jobs:
       - name: Validate outputs - audit_physics_basis.py
         run: python scripts/audit_physics_basis.py
 
+      - name: Validate outputs - audit_stair_control_state_machine.py
+        run: python scripts/audit_stair_control_state_machine.py
+
       - name: Validate outputs - validate_simulation_package.py
         run: python scripts/validate_simulation_package.py
 
@@ -118,6 +123,7 @@ jobs:
             analysis_out/Terrain_Elevate_P1_V0_59_smooth_climb_trajectory.csv
             analysis_out/Terrain_Elevate_P1_V0_59_fold_envelope_audit.json
             analysis_out/Terrain_Elevate_P1_V0_59_power_budget_audit.json
+            analysis_out/Terrain_Elevate_P1_V0_59_stair_control_audit.json
             data/te_v059_electrical_system.json
             analysis_out/Terrain_Elevate_P1_V0_59_connectivity_audit.json
             analysis_out/Terrain_Elevate_P1_V0_59_physics_basis_audit.json

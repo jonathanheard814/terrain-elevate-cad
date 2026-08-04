@@ -59,6 +59,7 @@ python scripts/generate_matlab_package.py
 python validate_outputs.py
 python scripts/audit_assembly_connectivity.py
 python scripts/audit_physics_basis.py
+python scripts/audit_stair_control_state_machine.py
 python scripts/validate_simulation_package.py
 python scripts/audit_design_acceptance.py
 ```
@@ -80,6 +81,7 @@ The design acceptance audit is written to `analysis_out/Terrain_Elevate_P1_V0_59
 The smooth stair-climb / ride-quality screen is written to `analysis_out/Terrain_Elevate_P1_V0_59_smooth_climb_audit.json`; this is the screen that currently reports the ride-quality FAIL described above, along with the searched actuator speed that would be needed to close it.
 The electrical power budget and its ride-quality cross-check are written to `analysis_out/Terrain_Elevate_P1_V0_59_power_budget_audit.json`. Note its two verdicts: `as_sourced_result` answers whether the pack can run the parts currently on the BOM, while the top-level `result` answers whether it can run the machine the design actually requires. These currently differ, and the difference is the point.
 The fold-envelope audit is written to `analysis_out/Terrain_Elevate_P1_V0_59_fold_envelope_audit.json`.
+The stair-climb control state machine lives in `src/terrain_elevate/stair_control.py`, and its exhaustive safety verification is written to `analysis_out/Terrain_Elevate_P1_V0_59_stair_control_audit.json`. Because the transition function is a pure function of (state, predicates), the audit enumerates all 20,480 state/predicate transitions rather than sampling scenarios, and additionally verifies by ablation that no single intent condition — deadman, handle force, committal dwell, the explicit committal button, or the preview sensor — can be lost while stair committal remains reachable. This is a hard gate: unlike the sizing screens, a failure here is a logic defect, not an engineering finding.
 The measured ride-quality trade study is `data/te_v059_ride_quality_trade_study.json`; it records the wheel-diameter and forward-speed parameter sweeps behind the table above, so the over-constraint conclusion rests on recorded measurements rather than intuition.
 The sourced part decision register is `data/te_v059_sourced_part_register.json`; each item states the requirement, reason, key specs, source status, and CAD representation.
 The physical simulation parameter pack is `data/te_v059_physics_elements.json`; it contains tire/stair contact assumptions, actuator motor/gear/screw dynamics, sensor rates, local control timing, and the installed simulation-library status.

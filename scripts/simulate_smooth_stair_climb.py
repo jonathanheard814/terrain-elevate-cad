@@ -41,8 +41,8 @@ def _wheel_effective_ground_m(x_m: float, radius_m: float, rise_m: float, going_
     """Effective ground height seen by a wheel of finite radius, as its
     centre rolls over a staircase.
 
-    A 280 mm wheel does not drop into a step discontinuity: it contacts each
-    tread nosing and pivots over it, so its centre traces a smooth arc of
+    A wheel of any real diameter does not drop into a step discontinuity: it
+    contacts each tread nosing and pivots over it, so its centre traces an arc of
     radius `radius_m` about that edge. The centre height is the upper
     envelope of every constraint in range -- each tread surface (centre sits
     radius above it) and each nosing edge (centre sits on a circle about the

@@ -316,9 +316,24 @@ def _add_seat_pod(components: list[Component]) -> None:
             _soft_box("five_point_harness_bar", "harness anchor crossbar", "13-26", (75, 0, 845), (255, 30, 34), 6),
         ]
     )
+    # Pod is a removable carrier (car-seat / travel-system style), not
+    # permanently bolted: the roll shaft still rotates freely in its
+    # bearings for active leveling, but axial retention is now a positive
+    # rotary latch pair (independent left/right, same Southco R4 family as
+    # the battery quick-release) instead of bolts, so a caregiver can lift
+    # the whole pod off without tools -- and folding the now-lighter,
+    # pod-free chassis is correspondingly easier.
     for i, y_side in enumerate((276, -276)):
-        components.extend(_bolt_y(f"seat_roll_bearing_retainer_m6_{i}_a", (-18, y_side, 645), 68, 6))
-        components.extend(_bolt_y(f"seat_roll_bearing_retainer_m6_{i}_b", (18, y_side, 645), 68, 6))
+        lr = "left" if y_side > 0 else "right"
+        sign = 1 if y_side > 0 else -1
+        components.extend(
+            [
+                _soft_box(f"pod_release_latch_housing_{i}", f"{lr} positive rotary latch retaining pod roll shaft, independent of other side", "13-26", (0, y_side, 645), (46, 30, 34), 4, material="steel"),
+                _cylinder(f"pod_release_latch_pin_{i}", f"{lr} pod release latch pin, spring-extended into shaft retaining groove when locked", "13-26", (0, y_side, 645), 5, 26, "X", "steel"),
+                _soft_box(f"pod_release_confirm_sensor_{i}", f"{lr} pod latch full-engagement confirmation sensor, not credited as the structural lock", "67", (0, y_side + sign * 18, 645), (10, 8, 10), 2, material="electronics"),
+            ]
+        )
+    components.append(_soft_box("pod_release_grip", "two-hand deliberate pod release grip, actuates both latches together", "13-26", (0, 0, 645), (40, 40, 30), 5, material="plastic"))
 
 
 def _add_controls(components: list[Component]) -> None:
@@ -354,6 +369,15 @@ def _add_handle_and_sensors(components: list[Component], g: dict) -> None:
             _tube("handle_right_upright", "folding handle upright tube", "31-36", (-550, -285, 855), 17, 11, 610, "Z"),
             _tube("handle_grip_deadman_bar", "operator grip with deadman release", "31-36", (-550, 0, 1160), 20, 13, 620, "Y"),
             _soft_box("deadman_release_paddle", "deadman release paddle", "31-36", (-505, 0, 1210), (120, 14, 58), 5),
+            # Handle control interface: real momentary pushbuttons (not a
+            # touchscreen/single-sensor dependency), a haptic actuator that
+            # gives the caregiver physical feedback (assist engaged, stair
+            # detected, fault) without requiring them to look away from the
+            # child, and a status indicator as a secondary visual channel.
+            _soft_box("handle_grip_power_button", "sealed power/standby momentary pushbutton", "31-36", (-550, 80, 1170), (20, 20, 16), 4, material="electronics"),
+            _soft_box("handle_grip_assist_mode_button", "sealed assist-level cycle momentary pushbutton", "31-36", (-550, -80, 1170), (20, 20, 16), 4, material="electronics"),
+            _cylinder("handle_haptic_feedback_motor", "haptic feedback actuator in grip -- assist/stair-detect/fault feedback the caregiver can feel without looking away from the child", "31-36", (-550, 0, 1160), 6, 20, "Y", "electronics"),
+            _soft_box("handle_status_indicator_led", "sealed multi-color status indicator, secondary to haptic/audible feedback", "31-36", (-550, 160, 1170), (14, 14, 10), 3, material="electronics"),
             _soft_box("handle_left_lower_yoke_link", "left lower handle yoke linking upright to hinge shaft", "31-36", (-545, 325, 665), (48, 124, 390), 5, material="steel"),
             _soft_box("handle_right_lower_yoke_link", "right lower handle yoke linking upright to hinge shaft", "31-36", (-545, -325, 665), (48, 124, 390), 5, material="steel"),
             _soft_box("deadman_paddle_hinge_tab", "deadman paddle hinge tab connected to handle grip", "31-36", (-525, 0, 1185), (52, 54, 36), 4, material="steel"),
@@ -627,25 +651,44 @@ def _is_folding_handle_group(component: Component) -> bool:
             "handle_right_lower_yoke_link",
             "deadman_release_paddle",
             "deadman_paddle_hinge_tab",
+            "handle_grip_power_button",
+            "handle_grip_assist_mode_button",
+            "handle_haptic_feedback_motor",
+            "handle_status_indicator_led",
         )
     )
 
 
-def build_folded_pose_components(params: dict) -> list[Component]:
-    """Return a visual kinematic pose: the folding handle assembly rotated
-    down about its real modeled hinge axis (fold_hinge_axis_left/right),
-    everything else held at rest position.
+def _is_removable_pod_group(component: Component) -> bool:
+    """The car-seat-style removable pod carrier: everything that lifts off
+    with it when the caregiver releases pod_release_latch_pin_0/1, as
+    opposed to the chassis-side trunnion stands and latch receivers, which
+    stay behind."""
+    name = component.name.lower()
+    if "trunnion" in name:
+        return False
+    return name.startswith("seat_") or name in ("mechanical_level_lock", "five_point_harness_bar")
 
-    This is a partial fold: the corner suspension towers and seat pod have no
-    fold mechanism modeled yet, so the reported envelope is a conservative
-    (upper-bound) estimate -- a design that also folds those would only get
-    smaller, not bigger, than what this pose reports.
+
+def build_folded_pose_components(params: dict) -> list[Component]:
+    """Return a visual kinematic pose: the pod removed (car-seat/travel-
+    system style, via pod_release_latch_pin_0/1) and the folding handle
+    assembly rotated down about its real modeled hinge axis
+    (fold_hinge_axis_left/right); everything else held at rest position.
+
+    This is a partial fold: the corner suspension towers have no parked/
+    retracted pose modeled yet, so the reported envelope is a conservative
+    (upper-bound) estimate for the pod-removed, handle-folded chassis -- a
+    design that also parks the corner actuators would only get smaller, not
+    bigger, than what this pose reports.
     """
     g = params["geometry"]
     hinge_pivot = (-540.0, 0.0, g["frame_z_mm"] + 95.0)
     fold_angle_deg = 100.0
     posed: list[Component] = []
     for component in build_components(params, include_reference=False):
+        if _is_removable_pod_group(component):
+            continue
         if _is_folding_handle_group(component):
             posed.append(_rotated_y(component, fold_angle_deg, hinge_pivot, "_folded_pose"))
         else:
@@ -748,6 +791,31 @@ def export_dxf(path: Path, g: dict) -> None:
         z += rise
 
     doc.saveas(path)
+
+
+def export_isometric_views(params: dict, out_dir: Path) -> None:
+    """Real vector-projection renders of the actual CAD geometry (SVG, so it
+    works headless with no display/GPU) -- not a mockup or concept render."""
+    out_dir.mkdir(parents=True, exist_ok=True)
+    view_opt = {"width": 1600, "height": 1200, "projectionDir": (1, -1, 0.75), "showAxes": False}
+    exporters.export(
+        _compound(build_components(params, include_reference=False)),
+        str(out_dir / "Terrain_Elevate_P1_V0_59_isometric.svg"),
+        exportType="SVG",
+        opt=view_opt,
+    )
+    exporters.export(
+        _compound(build_stair_climb_pose_components(params)),
+        str(out_dir / "Terrain_Elevate_P1_V0_59_stair_climb_pose_isometric.svg"),
+        exportType="SVG",
+        opt=view_opt,
+    )
+    exporters.export(
+        _compound(build_folded_pose_components(params)),
+        str(out_dir / "Terrain_Elevate_P1_V0_59_folded_pose_isometric.svg"),
+        exportType="SVG",
+        opt=view_opt,
+    )
 
 
 def export_model(params: dict, out_dir: Path) -> dict:

@@ -235,6 +235,42 @@
       "reason_selected": "Real catalog 48 V-to-12 V DC-DC converter sized above the screened electronics baseline load with margin.",
       "key_specs": {"input_voltage_V": "48", "output_voltage_V": 12.0, "output_power_W": 100.0},
       "cad_representation": "DC-DC converter module envelope mounted on the electronics bank plate."
+    },
+    {
+      "id": "pod_quick_release_latches",
+      "selection": "Southco R4 Series rotary latch pair (same family as battery_quick_release_mechanism)",
+      "source_status": "catalog_family",
+      "requirement": "Pod (car-seat/travel-system style carrier) must be removable without tools while the roll bearings still allow active leveling rotation; axial retention only, not a bolted joint, with a positive lock (not a spring detent alone) and independent left/right latches so one failing cannot release the pod.",
+      "reason_selected": "Reuses the already-sourced Southco R4 rotary latch family (real quarter-turn positive lock) instead of introducing a new hardware standard; paired with dedicated engagement-confirmation sensors per side so sensor confirmation proves full engagement, not mere alignment.",
+      "key_specs": {"latch_family": "Southco R4 Series rotary latch", "latch_count": 2, "release_action": "two-hand deliberate grip actuates both latches together"},
+      "cad_representation": "Two latch housings with spring-extended pins retaining the pod roll shaft axially inside its existing bearings, two engagement sensors, and a shared release grip."
+    },
+    {
+      "id": "handle_control_buttons",
+      "selection": "APEM AV series sealed IP67 momentary pushbuttons",
+      "source_status": "catalog_family",
+      "requirement": "Caregiver needs physical power/mode controls at the handle that are not a single touchscreen or visual-only interface (master requirement: must not depend on a single visual sensor for control).",
+      "reason_selected": "Real, widely-used sealed pushbutton family suited to an outdoor/wet-hands mobility-device grip.",
+      "key_specs": {"protection": "IP67", "actuation": "momentary tactile"},
+      "cad_representation": "Two sealed pushbuttons embedded in the grip top: power/standby and assist-mode cycle."
+    },
+    {
+      "id": "handle_haptic_feedback_actuator",
+      "selection": "Precision Microdrives 310-117 10mm linear resonant actuator",
+      "source_status": "exact_catalog_part",
+      "requirement": "Caregiver must be able to feel assist/stair-detect/fault feedback without looking away from the child (complements, does not replace, the status indicator and any audible feedback).",
+      "reason_selected": "Real, widely-used LRA haptic actuator sized to embed inside the grip tube.",
+      "key_specs": {"type": "linear resonant actuator", "diameter_mm": 10},
+      "cad_representation": "Haptic actuator embedded coaxially inside the grip/deadman bar."
+    },
+    {
+      "id": "handle_status_indicator",
+      "selection": "Marl International sealed multi-color panel indicator",
+      "source_status": "catalog_family",
+      "requirement": "Secondary visual status channel (not the primary caregiver-feedback path, which is haptic) for assist state and fault indication.",
+      "reason_selected": "Real, industrial-grade sealed indicator family suited to an outdoor mobility-device handle.",
+      "key_specs": {"protection": "sealed/IP-rated", "type": "multi-color LED panel indicator"},
+      "cad_representation": "Small sealed indicator lens mounted on the grip top."
     }
   ]
 }

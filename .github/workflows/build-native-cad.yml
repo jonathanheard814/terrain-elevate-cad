@@ -75,6 +75,7 @@ jobs:
           python scripts/build_occt_cad.py
           python scripts/audit_fold_envelope.py
           python scripts/audit_power_budget.py
+          python scripts/export_isometric_view.py || echo "isometric SVG export failed (non-blocking)"
           python scripts/export_simulation_package.py
           python scripts/generate_matlab_package.py
 
@@ -127,3 +128,13 @@ jobs:
             sim_out/MATLAB_SOLIDWORKS_IMPORT_NOTES.json
             sim_out/meshes/*.stl
           if-no-files-found: error
+
+      - name: Upload isometric view renders
+        uses: actions/upload-artifact@v4
+        with:
+          name: TerrainElevate-P1-V059-Isometric-Views
+          path: |
+            cad_out/Terrain_Elevate_P1_V0_59_isometric.svg
+            cad_out/Terrain_Elevate_P1_V0_59_stair_climb_pose_isometric.svg
+            cad_out/Terrain_Elevate_P1_V0_59_folded_pose_isometric.svg
+          if-no-files-found: warn

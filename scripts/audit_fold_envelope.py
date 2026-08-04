@@ -1,17 +1,19 @@
 #!/usr/bin/env python3
 """Fold-to-trunk / stroller-size envelope check.
 
-Computes the real CAD bounding box with the folding handle assembly rotated
-down about its modeled hinge axis (src/terrain_elevate/cad_model.py,
-build_folded_pose_components) and compares it against representative trunk
-cargo-opening and stroller folded-footprint reference figures.
+Computes the real CAD bounding box with the car-seat-style pod carrier
+removed (via pod_release_latch_pin_0/1) and the folding handle assembly
+rotated down about its modeled hinge axis
+(src/terrain_elevate/cad_model.py, build_folded_pose_components), and
+compares it against representative trunk cargo-opening and stroller
+folded-footprint reference figures.
 
 Truth boundary: this is a CAD bounding-box CALC, not a physical fit test, and
-it is informational -- it does not gate the overall build. Only the handle
-fold is modeled; the seat pod and corner suspension have no fold mechanism in
-this CAD yet, so this is a partial/conservative (upper-bound) estimate. The
-trunk/stroller reference figures are representative, not measurements of a
-specific target vehicle or competitor product.
+it is informational -- it does not gate the overall build. Corner suspension
+stroke is not parked/retracted in this pose, so this is a partial,
+conservative (upper-bound) estimate of the pod-removed, handle-folded
+chassis. The trunk/stroller reference figures are representative, not
+measurements of a specific target vehicle or competitor product.
 """
 from __future__ import annotations
 
@@ -57,11 +59,11 @@ def main() -> None:
 
     result = {
         "truth_boundary": (
-            "CAD bounding-box CALC with only the folding handle re-posed about its "
-            "modeled hinge axis. Not a physical fit test, and informational only -- "
-            "does not gate the overall build. Corner suspension stroke and the seat "
-            "pod are not folded in this CAD yet, so this is a partial, conservative "
-            "(upper-bound) estimate of the true folded envelope."
+            "CAD bounding-box CALC with the pod carrier removed and the folding "
+            "handle re-posed about its modeled hinge axis. Not a physical fit test, "
+            "and informational only -- does not gate the overall build. Corner "
+            "suspension stroke is not parked/retracted in this pose, so this is a "
+            "partial, conservative (upper-bound) estimate of the true folded envelope."
         ),
         "folded_bounding_box_mm": bbox,
         "folded_length_mm": length_mm,
@@ -77,9 +79,12 @@ def main() -> None:
         },
         "open_items": [
             "Corner suspension is not commanded to a retracted/parked stroke in this "
-            "pose, and the seat pod has no modeled fold mechanism -- both would need "
-            "real fold hardware and CAD poses before this is a production fold spec. "
-            "Closes when those subsystems get sourced fold hardware.",
+            "pose -- would need a real parked-pose CAD export before this is a "
+            "production fold spec. Closes when the corner actuators get a sourced "
+            "parked/retracted position and a corresponding CAD pose.",
+            "The removed pod's own standalone envelope (as a carried car-seat-style "
+            "unit) is not separately reported here. Closes with a dedicated "
+            "pod-only bounding-box CALC.",
             "Trunk and stroller reference dimensions above are representative "
             "figures, not measurements of a specific target vehicle or competitor "
             "product. Closes when a specific target trunk/vehicle is sourced.",

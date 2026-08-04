@@ -26,7 +26,10 @@ sys.path.insert(0, str(ROOT / "src"))
 from terrain_elevate.stair_control import (  # noqa: E402
     ON_STAIR_STATES,
     Predicates,
+    SensorFrame,
     State,
+    Thresholds,
+    derive_predicates,
     step,
 )
 
@@ -144,6 +147,61 @@ def main() -> None:
     # 9. No unreachable states (dead logic) and no undefined targets.
     unreachable = sorted(s.value for s in State if s not in reached_states)
 
+    # 10. Threshold consistency in the sensor -> predicate layer. `step` is
+    #     verified above over predicates directly, so nothing there catches a
+    #     bad threshold CHOICE. The hazard is concrete: in GROUND_ROLLING the
+    #     single-corner branch is evaluated before the stair branch, so if the
+    #     single-corner rise ceiling ever exceeded the stair-detection floor, a
+    #     real staircase in that overlap would be answered as a curb -- one
+    #     corner twitching instead of a stair committal. Assert the bands
+    #     cannot overlap, and that a landing cannot simultaneously read as a
+    #     stair.
+    t = Thresholds()
+    threshold_checks = {
+        "single_corner_band_below_stair_band": (
+            t.max_single_corner_rise_mm <= t.min_stair_rise_mm
+        ),
+        "landing_clear_below_stair_floor": (
+            t.landing_clear_rise_mm < t.min_stair_rise_mm
+        ),
+        "committal_dwell_positive": t.min_committal_dwell_s > 0.0,
+        "handle_force_positive": t.min_handle_force_N > 0.0,
+    }
+    for name, ok in threshold_checks.items():
+        if not ok:
+            violations.append({
+                "property": "threshold_consistency",
+                "from_state": None,
+                "predicates": None,
+                "detail": f"threshold check '{name}' failed",
+            })
+
+    # 11. The derived-predicate layer must honour the same separation on real
+    #     sensor values, not just on the threshold numbers.
+    def _frame(front_mm: float, spread_mm: float) -> SensorFrame:
+        return SensorFrame(
+            deadman_engaged=True, handle_force_N=40.0, handle_force_sustained_s=2.0,
+            stair_committal_button=True, reverse_committal_button=False,
+            front_preview_rise_mm=front_mm, rear_preview_rise_mm=0.0,
+            chassis_pitch_deg=0.0, corner_extension_spread_mm=spread_mm,
+            wheel_speed_mps=0.0, fault_present=False,
+        )
+
+    for front_mm, spread_mm, label in (
+        (203.2, 90.0, "reference stair rise with a large corner spread"),
+        (150.0, 90.0, "intermediate rise with a large corner spread"),
+        (60.0, 90.0, "curb-height rise with a large corner spread"),
+    ):
+        dp = derive_predicates(_frame(front_mm, spread_mm))
+        if dp.stair_confirmed_ahead and dp.single_corner_event:
+            violations.append({
+                "property": "stair_and_single_corner_mutually_exclusive",
+                "from_state": None,
+                "predicates": {"front_preview_rise_mm": front_mm,
+                               "corner_extension_spread_mm": spread_mm},
+                "detail": f"{label} classified as BOTH a stair and a single-corner event",
+            })
+
     result = {
         "truth_boundary": (
             "Exhaustive verification of the control logic's transition table. Not a "
@@ -171,7 +229,10 @@ def main() -> None:
             "drive_implies_deadman",
             "brakes_and_drive_exclusive",
             "committal_no_single_point_of_failure",
+            "threshold_consistency",
+            "stair_and_single_corner_mutually_exclusive",
         ],
+        "threshold_checks": threshold_checks,
         "committal_ablation": ablation,
         "unreachable_states": unreachable,
         "violations": violations[:50],

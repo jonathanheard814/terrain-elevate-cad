@@ -1,0 +1,167 @@
+{
+  "truth_boundary": "Rigid-body contact simulation of the CAD-derived URDF using the recorded tire contact parameters. Not a validated dynamic model, not a physical test, and not a ride-comfort evaluation -- see modelling_limitations.",
+  "purpose": "Establish that the exported simulation package loads and behaves physically before any comfort or architecture conclusion is drawn from it.",
+  "backend": {
+    "engine": "PyBullet",
+    "version": "unknown",
+    "mode": "DIRECT (headless)",
+    "timestep_s": 0.0005,
+    "settle_time_s": 2.0,
+    "gravity_mps2": 9.80665
+  },
+  "model": {
+    "urdf": "Terrain_Elevate_P1_V0_59_sim.urdf",
+    "terrain_mesh": "reference_stairs_203r_279g.stl",
+    "terrain_collision": "GEOM_FORCE_CONCAVE_TRIMESH (true staircase, not a hull)",
+    "joint_count": 13,
+    "joints": [
+      {
+        "name": "pod_pitch_leveling_joint",
+        "type": "revolute"
+      },
+      {
+        "name": "front_left_corner_prismatic_actuator",
+        "type": "prismatic"
+      },
+      {
+        "name": "front_left_fork_carrier_fixed",
+        "type": "fixed"
+      },
+      {
+        "name": "front_left_wheel_drive_joint",
+        "type": "revolute"
+      },
+      {
+        "name": "front_right_corner_prismatic_actuator",
+        "type": "prismatic"
+      },
+      {
+        "name": "front_right_fork_carrier_fixed",
+        "type": "fixed"
+      },
+      {
+        "name": "front_right_wheel_drive_joint",
+        "type": "revolute"
+      },
+      {
+        "name": "rear_left_corner_prismatic_actuator",
+        "type": "prismatic"
+      },
+      {
+        "name": "rear_left_fork_carrier_fixed",
+        "type": "fixed"
+      },
+      {
+        "name": "rear_left_wheel_drive_joint",
+        "type": "revolute"
+      },
+      {
+        "name": "rear_right_corner_prismatic_actuator",
+        "type": "prismatic"
+      },
+      {
+        "name": "rear_right_fork_carrier_fixed",
+        "type": "fixed"
+      },
+      {
+        "name": "rear_right_wheel_drive_joint",
+        "type": "revolute"
+      }
+    ],
+    "wheel_joints_found": 4,
+    "spawn_position_m": [
+      -1.2,
+      0,
+      0.495
+    ]
+  },
+  "contact_parameters_applied_SRC": {
+    "source": "data/te_v059_physics_elements.json contact_model.wheel_tire_on_dry_stair",
+    "static_friction_mu": 0.85,
+    "rolling_resistance": 0.025,
+    "normal_stiffness_N_per_m": 180000.0,
+    "normal_damping_Ns_per_m": 1800.0
+  },
+  "settling_CALC": {
+    "final_position_m": [
+      -1.2,
+      7.66855022009787e-24,
+      -15.140691450409216
+    ],
+    "final_roll_pitch_yaw_deg": [
+      -5.6199199867356334e-21,
+      4.152001844258797e-21,
+      -2.5543672103971134e-37
+    ],
+    "final_speed_mps": 12.939917343497646,
+    "max_speed_during_settle_mps": 12.9151663281265,
+    "resting_chassis_height_m": -15.140691450409216,
+    "expected_chassis_height_m": 0.445,
+    "height_error_mm": -15585.691450409216,
+    "contact_link_indices": [],
+    "contact_point_count": 0,
+    "max_interpenetration_mm": 0.0,
+    "height_trace_m": [
+      0.4949975483375,
+      0.4944337453529892,
+      0.492889737923542,
+      0.49036603714863586,
+      0.48686323060385794,
+      0.4823819821574235,
+      0.4769230317630102,
+      0.4704871952290427,
+      0.46307536396458393,
+      0.4546885047019981,
+      0.44532765919656925,
+      0.4349939439032733,
+      0.42368854963091523,
+      0.41141274117385984,
+      0.39816785692159395,
+      0.38395530844637793,
+      0.36877658006925235,
+      0.3526332284046828,
+      0.335526881884136,
+      0.3174592402588966,
+      0.29843207408244077,
+      0.278447224172701,
+      0.257506601054563,
+      0.23561218438294984,
+      0.21276602234685846,
+      0.18897023105472324,
+      0.1642269939014927,
+      0.13853856091781375,
+      0.11190724810172924,
+      0.08433543673330032,
+      0.05582557267257625,
+      0.02638016564134058,
+      -0.003998211510928901,
+      -0.03530692355644287,
+      -0.06754327365337494,
+      -0.10070450412457112,
+      -0.1347877972502317,
+      -0.1697902760740983,
+      -0.20570900522267227,
+      -0.24254099173698968
+    ]
+  },
+  "checks": {
+    "model_did_not_explode": false,
+    "settled_to_rest": false,
+    "remained_upright": true,
+    "wheels_contacted_ground": false,
+    "resting_height_matches_geometry": false,
+    "no_gross_interpenetration": true
+  },
+  "modelling_limitations": [
+    "The passive per-corner spring/damper exists in the CAD as an envelope but is NOT a joint in the exported URDF, so the corner is rigid apart from tire compliance. Chassis accelerations here are therefore stiffer than the real machine's, and must not be quoted as a ride-comfort result.",
+    "PyBullet convex-hulls non-convex collision meshes for dynamic bodies, so the chassis and wheel modules collide as their convex hulls rather than their true CAD outlines. Wheels are near-convex so this matters little for them; it matters more for any chassis-to-stair clearance conclusion.",
+    "Tire contact stiffness/damping and friction come from te_v059_physics_elements.json, where they are ASSUMED screening values, not measured tire/stair data.",
+    "No actuator control loop is applied at this stage: corner actuators are held at their spawn position. This screen answers whether the model is physically sound, not whether the vehicle can climb."
+  ],
+  "open_items": [
+    "Add the passive corner spring/damper as a real URDF joint before any ride-comfort figure is computed here; without it the corner is rigid apart from tire compliance and accelerations are overstated.",
+    "Drive the corner actuators from the stair-climb control state machine and command a real climb, rather than holding joints at spawn position, before claiming stair-climb validation.",
+    "Once both of the above exist, compute an ISO 2631-1 frequency-weighted RMS acceleration from the real contact-simulated chassis motion. That is the figure the kinematic screen cannot produce, and it is what closes the ride-quality comfort question either way."
+  ],
+  "result": "FAIL"
+}

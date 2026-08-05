@@ -1,0 +1,60 @@
+{
+  "truth_boundary": "Exhaustive verification of the control logic's transition table. Not a real-time timing analysis, not a hardware FMEA, not functional-safety certification.",
+  "method": "step() is a pure function of (state, predicates), so every State was enumerated against every combination of the boolean predicates and each safety property checked on the resulting transition. The committal property is additionally verified by ablation: each independent intent condition is forced false in turn and the whole space re-enumerated to confirm entry to stair driving becomes unreachable.",
+  "states": 10,
+  "predicates": 12,
+  "transitions_checked": 40960,
+  "properties_verified": [
+    "no_free_fall_on_stairs",
+    "deadman_removes_drive",
+    "fault_disables_actuation",
+    "fault_engages_holds",
+    "reverse_requires_explicit_intent",
+    "single_corner_is_not_stair_mode",
+    "drive_implies_deadman",
+    "brakes_and_drive_exclusive",
+    "committal_no_single_point_of_failure",
+    "attitude_limit_disables_actuation",
+    "attitude_limit_engages_holds",
+    "threshold_consistency",
+    "stair_and_single_corner_mutually_exclusive"
+  ],
+  "threshold_checks": {
+    "single_corner_band_below_stair_band": true,
+    "landing_clear_below_stair_floor": true,
+    "committal_dwell_positive": true,
+    "handle_force_positive": true,
+    "pitch_envelope_admits_stair_angle": true
+  },
+  "committal_ablation": {
+    "deadman": {
+      "blocks_entry_to_stair_driving": true,
+      "breaches": 0
+    },
+    "force_pattern_ok": {
+      "blocks_entry_to_stair_driving": true,
+      "breaches": 0
+    },
+    "dwell_satisfied": {
+      "blocks_entry_to_stair_driving": true,
+      "breaches": 0
+    },
+    "committal_requested": {
+      "blocks_entry_to_stair_driving": true,
+      "breaches": 0
+    },
+    "preview_confirms_stair": {
+      "blocks_entry_to_stair_driving": true,
+      "breaches": 0
+    }
+  },
+  "unreachable_states": [],
+  "violations": [],
+  "violation_count": 0,
+  "open_items": [
+    "All thresholds in stair_control.Thresholds are ASSUMED engineering placeholders, not tuned or validated values; the logic is verified against them symbolically, but the numbers themselves close only with a real HMI study (handle force and committal dwell) and the dynamic model (pitch and corner-spread limits).",
+    "Timing is not modelled here: this verifies the transition table, not that it executes within the sub-millisecond local control loop. Closes with a real-time implementation and a scheduling analysis.",
+    "Sensor faults are modelled only as a single aggregate fault_present latch. Per-sensor failure modes, disagreement between the redundant IMUs, and stuck-value detection are not yet represented; closes with a hardware FMEA."
+  ],
+  "result": "PASS"
+}

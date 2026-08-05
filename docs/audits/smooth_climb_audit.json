@@ -1,0 +1,141 @@
+{
+  "truth_boundary": "Kinematic motion-profile simulation of commanded corner-actuator position over time. Not FEA, not dynamic contact simulation, not a physical test. Forward speed is an ASSUMED constant input, not a result derived from wheel traction (see requirements_screen.json wheel_propulsion_screen, which is a separate, currently-FAIL check).",
+  "method": "Reuses the raw per-corner required-extension-vs-position sawtooth from analyze_vehicle_requirements.py, resamples it onto a time base at the assumed constant forward speed, then convolves it with a normalized quintic minimum-jerk kernel (the derivative of the classic 10s^3-15s^4+6s^5 S-curve) instead of placing independent point-to-point blends -- convolution superposes overlapping/closely-spaced corrections correctly rather than assuming they never overlap. The kernel window is sized to the tightest of: a screened-actuator-speed margin for the largest single correction, the real spacing between consecutive corrections for the same corner, and the sourced preview sensor's lookahead budget.",
+  "inputs": {
+    "stair_rise_mm": 203.2,
+    "stair_going_mm": 279.4,
+    "forward_speed_mps_ASSUMED": 0.2,
+    "screened_actuator_linear_speed_mm_s": 170.5128205128205,
+    "preview_treads_ASSUMED": 2,
+    "preview_time_s": 2.7939999999999996,
+    "actuator_speed_margin_fraction_ASSUMED": 0.8,
+    "simulated_tread_count": 6,
+    "largest_single_sample_clearance_change_mm": 1.1362578006737252,
+    "clearance_signal_peak_to_peak_range_mm": 97.88772003043056,
+    "preview_budget_window_s": 2.7439999999999998,
+    "search_ceiling_window_s": 2.744,
+    "search_ceiling_infeasible": false,
+    "window_used_s": 0.504,
+    "window_selection_method": "Smallest window (by bisection) whose actually-measured peak velocity stays within actuator_speed_margin_fraction_ASSUMED of the screened actuator speed -- not a closed-form estimate. search_ceiling_window_s is the search's upper bound (2 tread periods, capped by the preview budget); if search_ceiling_infeasible is true, even that widest allowed window could not bring velocity under the margin, window_used_s is that ceiling as the best available compromise, and velocity_within_actuator_capability below reports the real shortfall rather than hiding it."
+  },
+  "per_corner": {
+    "front_left": {
+      "max_clearance_violation_mm": 7.105427357601002e-15,
+      "max_raw_position_step_mm": 5.676477028228717,
+      "max_smoothed_position_step_mm": 0.2719170850307471,
+      "max_smoothed_velocity_mm_s": 135.95854251537352,
+      "max_smoothed_acceleration_mm_s2": 1466.1486635159092,
+      "max_smoothed_jerk_mm_s3": 23344.62151587502,
+      "max_chassis_ramp_tracking_error_mm": 86.09960055487113,
+      "max_chassis_vertical_acceleration_mm_s2": 1062792.0454461446,
+      "max_chassis_vertical_jerk_mm_s3": 672460966.1615943,
+      "uncorrected_bare_stair_acceleration_mm_s2": 1062792.0454461162
+    },
+    "front_right": {
+      "max_clearance_violation_mm": 7.105427357601002e-15,
+      "max_raw_position_step_mm": 5.676477028228717,
+      "max_smoothed_position_step_mm": 0.2719170850307471,
+      "max_smoothed_velocity_mm_s": 135.95854251537352,
+      "max_smoothed_acceleration_mm_s2": 1466.1486635159092,
+      "max_smoothed_jerk_mm_s3": 23344.62151587502,
+      "max_chassis_ramp_tracking_error_mm": 86.09960055487113,
+      "max_chassis_vertical_acceleration_mm_s2": 1062792.0454461446,
+      "max_chassis_vertical_jerk_mm_s3": 672460966.1615943,
+      "uncorrected_bare_stair_acceleration_mm_s2": 1062792.0454461162
+    },
+    "rear_left": {
+      "max_clearance_violation_mm": 2.842170943040401e-14,
+      "max_raw_position_step_mm": 5.596175432178107,
+      "max_smoothed_position_step_mm": 0.2716377369893834,
+      "max_smoothed_velocity_mm_s": 135.8188684946917,
+      "max_smoothed_acceleration_mm_s2": 1465.061660491429,
+      "max_smoothed_jerk_mm_s3": 23314.865047474595,
+      "max_chassis_ramp_tracking_error_mm": 86.0765339333575,
+      "max_chassis_vertical_acceleration_mm_s2": 1062792.0454469405,
+      "max_chassis_vertical_jerk_mm_s3": 672461032.0919454,
+      "uncorrected_bare_stair_acceleration_mm_s2": 1062792.0454469405
+    },
+    "rear_right": {
+      "max_clearance_violation_mm": 2.842170943040401e-14,
+      "max_raw_position_step_mm": 5.596175432178107,
+      "max_smoothed_position_step_mm": 0.2716377369893834,
+      "max_smoothed_velocity_mm_s": 135.8188684946917,
+      "max_smoothed_acceleration_mm_s2": 1465.061660491429,
+      "max_smoothed_jerk_mm_s3": 23314.865047474595,
+      "max_chassis_ramp_tracking_error_mm": 86.0765339333575,
+      "max_chassis_vertical_acceleration_mm_s2": 1062792.0454469405,
+      "max_chassis_vertical_jerk_mm_s3": 672461032.0919454,
+      "uncorrected_bare_stair_acceleration_mm_s2": 1062792.0454469405
+    }
+  },
+  "gates": {
+    "no_position_discontinuity": {
+      "max_smoothed_position_step_mm": 0.2719170850307471,
+      "tolerance_mm": 0.5,
+      "max_raw_position_step_mm_for_comparison": 5.676477028228717,
+      "result": "PASS",
+      "note": "max_smoothed_position_step_mm equals max_smoothed_velocity_mm_s * sample_dt_s by construction (it is the same numerically-differentiated signal, not an independent check) -- mathematical continuity is already guaranteed by convolving with a bounded kernel, regardless of sampling. This gate is informational; velocity_within_actuator_capability below is the substantive, non-redundant finding."
+    },
+    "velocity_within_actuator_capability": {
+      "max_smoothed_velocity_mm_s": 135.95854251537352,
+      "screened_actuator_linear_speed_mm_s": 170.5128205128205,
+      "result": "PASS",
+      "note": null
+    }
+  },
+  "wheel_step_geometry": {
+    "purpose": "Whether the wheel can roll over a stair nosing unaided, or must be actively lifted clear of the riser face first. This is pure geometry and it drives the whole actuator duty cycle.",
+    "wheel_diameter_mm": 430.0,
+    "wheel_radius_mm": 215.0,
+    "stair_rise_mm": 203.2,
+    "rolls_over_unaided": true,
+    "required_lift_to_clear_riser_mm": 0.0,
+    "wheel_diameter_for_unaided_rolling_mm": 406.4,
+    "finding": "The wheel centre on the lower tread sits at radius above it. To pass a nosing without being lifted, that centre must already be at or above the nosing, i.e. radius >= rise. At the current 430 mm diameter (radius 215 mm) against a 203.2 mm rise, radius >= rise holds with 11.8 mm margin, so the wheel rolls over the nosing unaided -- no forced lift is required at any step. This does not by itself mean the ride is smooth: the wheel's natural rolling-contact path still deviates from an ideal ramp line (see ride_quality below), which is a separate question this screen does not answer."
+  },
+  "ride_quality": {
+    "purpose": "The metric that actually matters to the occupant: how closely the chassis corner follows the ideal ramp line, versus the bare staircase it would ride with no actuator. This is the bulk, low-frequency tracking the corner actuator actually controls. Smoothing the actuator command harder always lowers required actuator speed while worsening this, so both are gated together.",
+    "max_chassis_ramp_tracking_error_mm": 86.09960055487113,
+    "ramp_error_budget_mm": 25.0,
+    "stair_rise_mm_for_scale": 203.2,
+    "result": "FAIL",
+    "peak_vertical_acceleration": {
+      "note": "NOT a claimed comfort improvement. Peak vertical acceleration is dominated by the wheel's own geometric pivot over each nosing -- a rolling-contact transient the corner actuator's extension-smoothing does not touch (it adds to ground height, it does not change how sharply that ground height transitions). Absorbing that high-frequency transient is the per-corner passive spring/damper's job, not this actuator's -- reported for reference only, not gated.",
+      "max_chassis_vertical_acceleration_mm_s2": 1062792.0454469405,
+      "uncorrected_bare_stair_vertical_acceleration_mm_s2": 1062792.0454469405,
+      "peak_ratio_reference_only": 1.0
+    }
+  },
+  "clearance": {
+    "purpose": "Safety-critical: the commanded extension must never fall below the clearance floor, or the wheel is driven into a riser face.",
+    "max_clearance_violation_mm": 2.842170943040401e-14,
+    "tolerance_mm": 0.5,
+    "result": "PASS"
+  },
+  "actuator_reselection_spec": {
+    "purpose": "Exact, selection-neutral closure criterion for the corner actuator, sized against whichever gate actually fails. Ball-screw speed and force both scale with the motor's torque x speed product, so raising screw lead or lowering gear ratio to gain speed costs proportional force -- only a higher-power motor closes this.",
+    "binding_gate": "ride_quality",
+    "achieved_velocity_at_actuator_optimal_window_mm_s": 135.95854251537352,
+    "required_velocity_for_ride_quality_mm_s": 1099.1849894672273,
+    "required_linear_speed_mm_s": 1099.1849894672273,
+    "delivered_linear_speed_mm_s": 170.5128205128205,
+    "speed_shortfall_factor": 6.446348058529605,
+    "required_axial_force_N": 1323.8977499999999,
+    "delivered_axial_force_N": 2018.3067755208017,
+    "required_mechanical_power_at_screw_W": 1455.2085343894357,
+    "motor_torque_speed_product_shortfall_factor": 4.22844821902856,
+    "current_motor": "maxon EC-i 52 part 633919",
+    "closure": "Select a corner-actuator motor whose nominal torque x nominal speed product exceeds the current one by at least 4.23x, then re-run this screen -- equivalent to roughly 1455 W continuous-or-duty-cycle-rated mechanical power at the screw (vs the current 420 W motor), given the low duty cycle already established in te_v059_electrical_system.json (~75% corner-active time, not continuous). Two real candidates already checked against actual datasheets and found INSUFFICIENT, so this is not yet closed by a simple family swap: the Dunkermotoren BG75 dMove family (all three stack lengths, 48 V) tops out around 6044 Nm*rpm continuous (BG75x75, 2.07/1.36 Nm at 2920/3270 rpm per the manufacturer datasheet) versus roughly 17215 Nm*rpm required; maxon's largest compact EC-flat frame (EC 90 flat, 260 W/48 V) is similarly short at about 4820 Nm*rpm. Closing this for real needs either a larger industrial BLDC/servo motor frame outside these compact families, or replacing the ball-screw+motor+gearhead assembly with a purpose-built high-speed electric rod actuator sized to 1324 N / 1.10 m/s directly (Exlar and Tolomatic are real vendors in this force/speed class) -- either path requires vendor engagement with this exact spec, which is already listed under required_verifications_before_release in requirements_screen.json."
+  },
+  "normalization_note": "Per-corner extension here is the raw ramp-minus-step gap, not normalized against the lowest corner as in analyze_vehicle_requirements.py. Because stair height is a floor function that quantity is already bounded to [0, rise) and directly commandable. Normalizing shifts the chassis down to its lowest corner, and since which corner is lowest keeps changing, that injects extra command transitions the geometry does not require -- measured at roughly double the transition count and about 36% higher peak actuator speed. The un-normalized formulation used here is both more physical and less demanding.",
+  "forward_speed_held_constant": true,
+  "no_walking_gait": {
+    "claim": "All four wheels remain in continuous rolling ground contact throughout climbing; the corner actuators only adjust vertical height under a wheel that never leaves the ground, and forward progress never pauses to lift and place a wheel like a leg/foot. This is a continuously-rolling wheeled architecture, not a legged/quadruped walking gait.",
+    "basis": "Structural, not simulated here: enforced by the locked design constraints in data/te_v059_parameters.json (extra_small_wheels=0, tracks=0, belts=0) and the corner mechanism architecture in src/terrain_elevate/cad_model.py, which drives wheel height via a fixed vertical ball-screw slider, not a leg that lifts off and re-plants."
+  },
+  "open_items": [
+    "No sourced mechanical or ride-comfort maximum-jerk limit exists yet for this platform; max_smoothed_jerk_mm_s3 is reported per corner as a measured quantity, not screened against a threshold. Closes when a ride-comfort or actuator-duty-cycle jerk limit is sourced.",
+    "ride_quality is FAIL: max_chassis_ramp_tracking_error_mm (86.1 mm) exceeds ramp_error_budget_mm (25.0 mm) even at the actuator-optimal window found by bisection (window_used_s in inputs above) -- this is the best ramp-tracking the sourced actuator can deliver at the current 430 mm wheel diameter, not an under-tuned window. See wheel_step_geometry above for whether the wheel rolls over the nosing unaided at this diameter (it now does, if rolls_over_unaided is true, which fixed the earlier clearance/jamming problem but not this one -- rolling unaided is necessary for ride quality, not sufficient). actuator_reselection_spec.required_velocity_for_ride_quality_mm_s is the searched (not estimated) actuator speed that would actually hit the budget. Closes by sourcing a faster actuator per that figure, by increasing wheel diameter further, or by justifying a larger chassis_ramp_error_budget_mm_ASSUMED against an actual ride-comfort limit, not choosing it to force a pass."
+  ],
+  "result": "FAIL"
+}

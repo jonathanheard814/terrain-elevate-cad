@@ -1,0 +1,75 @@
+{
+  "truth_boundary": "Electrical system sizing screen for CAD/BOM completeness. Not certification, not a UL/IEC compliance review, not a wiring-harness release drawing.",
+  "method": "Sums real electrical draw from every already-sourced powered subsystem under two scenarios: sustained continuous climbing (wheel drives at their screened climb torque/speed, corner actuators at an averaged duty cycle, pod actuators at an averaged active fraction) and worst-case simultaneous peak (multiple corner/pod actuators assumed active at once), then checks both against the sourced 13S2P battery pack's continuous discharge rating and a target continuous-climb runtime.",
+  "system_nominal_voltage_V": 48.0,
+  "loads": {
+    "corner_actuators": {
+      "continuous_A": 29.82,
+      "peak_A": 39.76,
+      "basis": "maxon EC-i 52 nominal current (SRC) x simultaneity/duty assumptions"
+    },
+    "wheel_drives": {
+      "continuous_A": 4.909677197446421,
+      "peak_A": 4.909677197446421,
+      "per_wheel_mechanical_W_CALC": 50.078707413953495,
+      "basis": "screened climb torque (requirements_screen.json) x forward speed, not motor peak rating"
+    },
+    "pod_pitch_actuators": {
+      "continuous_A": 1.125,
+      "peak_A": 7.5,
+      "basis": "ASSUMED Electrak MD-class power x active-fraction duty"
+    },
+    "electronics_baseline": {
+      "continuous_A": 1.25,
+      "peak_A": 1.25,
+      "basis": "ASSUMED summed ECU/sensor/connector baseline"
+    }
+  },
+  "totals": {
+    "continuous_A": 37.10467719744642,
+    "continuous_W": 1781.0245054774282,
+    "peak_A": 53.41967719744642,
+    "peak_W": 2564.144505477428
+  },
+  "battery_check": {
+    "pack_configuration": "13S2P",
+    "pack_nominal_voltage_V": 46.8,
+    "pack_max_continuous_discharge_A": 90.0,
+    "screened_peak_draw_A": 53.41967719744642,
+    "continuous_current_margin_A": 36.58032280255358,
+    "result": "PASS"
+  },
+  "runtime_check": {
+    "usable_energy_Wh": 314.5,
+    "continuous_climb_draw_W": 1781.0245054774282,
+    "runtime_at_continuous_climb_minutes": 10.59502547099521,
+    "target_runtime_minutes": 5.0,
+    "result": "PASS"
+  },
+  "as_sourced_result": "PASS",
+  "as_sourced_result_meaning": "Whether the sourced pack can run the parts currently on the BOM. This is NOT the same question as whether it can run the machine the design actually requires -- see ride_quality_actuator_power_crosscheck.",
+  "ride_quality_actuator_power_crosscheck": {
+    "applicable": true,
+    "method": "Substitutes the corner-actuator mechanical power that ride_quality requires (smooth_climb_audit.json actuator_reselection_spec) into the same duty/simultaneity assumptions used above, at an idealised 100% electrical-to-mechanical efficiency and counting corner actuators only.",
+    "required_mechanical_power_per_corner_W": 1455.2085343894357,
+    "idealised_continuous_A": 90.95053339933973,
+    "idealised_peak_A": 121.26737786578632,
+    "per_corner_A_at_100pct_efficiency": 30.31684446644658,
+    "pack_max_continuous_discharge_A": 90.0,
+    "corners_simultaneously_extendable_within_pack_rating": 2,
+    "corner_count": 4,
+    "idealised_runtime_minutes_corners_only": 4.322404556704381,
+    "target_runtime_minutes": 5.0,
+    "continuous_current_result": "FAIL",
+    "runtime_result": "FAIL",
+    "result": "FAIL",
+    "interpretation": "At 100% efficiency and ignoring every other load, 2 of 4 corner actuators can extend at the ride-quality-required rate within the pack's 90 A continuous rating. The sourced battery cannot power the actuator that ride_quality requires; this is a lower bound, so no efficiency or duty-cycle argument recovers it."
+  },
+  "open_items": [
+    "pod_pitch_actuator_power_W_ASSUMED and electronics_baseline_continuous_W_ASSUMED are engineering placeholders, not datasheet values; closes when the Thomson Electrak MD is configured to order and a per-PCB current budget exists for the control electronics.",
+    "Precharge/contactor sequencing is assumed covered by the Orion Jr BMS's integrated contactor control (data/te_v059_electrical_system.json); closes when the actual harness/contactor wiring is drawn and verified against the BMS's rated switching current.",
+    "No thermal analysis of the battery pack, motor drives, or wiring harness has been performed; closes with a thermal model once enclosure airflow is designed.",
+    "ride_quality_actuator_power_crosscheck FAILs: the corner actuator that simulate_smooth_stair_climb.py's ride_quality gate requires cannot be powered by the sourced 13S2P pack, even at an impossible 100% efficiency with every other load ignored. This is an architecture-level conflict, not a component-selection gap -- raising actuator speed raises corner power roughly in proportion, so the same battery cannot serve both the ride budget and the runtime target. Closes by changing one of the three constraints that collide here (ramp-error budget, energy storage, or the corner mechanism itself), not by re-selecting a motor."
+  ],
+  "result": "FAIL"
+}

@@ -1,0 +1,170 @@
+{
+  "result": "PASS",
+  "errors": [],
+  "warnings": [],
+  "installed_modules": {
+    "cadquery": true,
+    "scipy": true,
+    "casadi": true,
+    "trimesh": true,
+    "pybullet": true
+  },
+  "actuator_force_N": 2018.3067755208017,
+  "actuator_velocity_mps": 0.17051282051282052,
+  "local_loop_s": 0.0005,
+  "position_sensor_update_s": 0.0001,
+  "preview_sensor_process_s": 0.005,
+  "mesh_reports": {
+    "chassis.stl": {
+      "vertices": 361950,
+      "faces": 720920,
+      "extents_m": [
+        1179.5,
+        885.0,
+        1083.9975128173828
+      ],
+      "is_watertight": false
+    },
+    "front_left_slider.stl": {
+      "vertices": 12566,
+      "faces": 25084,
+      "extents_m": [
+        164.5,
+        188.0,
+        296.9916076660156
+      ],
+      "is_watertight": false
+    },
+    "front_left_wheel.stl": {
+      "vertices": 1578,
+      "faces": 3032,
+      "extents_m": [
+        440.0,
+        161.0,
+        440.0
+      ],
+      "is_watertight": true
+    },
+    "front_left_wheel_module.stl": {
+      "vertices": 11830,
+      "faces": 23672,
+      "extents_m": [
+        136.0,
+        279.0,
+        348.47821044921875
+      ],
+      "is_watertight": false
+    },
+    "front_right_slider.stl": {
+      "vertices": 12566,
+      "faces": 25084,
+      "extents_m": [
+        164.5,
+        188.0,
+        296.9916076660156
+      ],
+      "is_watertight": false
+    },
+    "front_right_wheel.stl": {
+      "vertices": 1578,
+      "faces": 3032,
+      "extents_m": [
+        440.0,
+        161.0,
+        440.0
+      ],
+      "is_watertight": true
+    },
+    "front_right_wheel_module.stl": {
+      "vertices": 11830,
+      "faces": 23672,
+      "extents_m": [
+        136.0,
+        279.0,
+        348.47821044921875
+      ],
+      "is_watertight": false
+    },
+    "occupant_pod.stl": {
+      "vertices": 32410,
+      "faces": 64792,
+      "extents_m": [
+        576.0,
+        614.0,
+        590.6466674804688
+      ],
+      "is_watertight": false
+    },
+    "rear_left_slider.stl": {
+      "vertices": 12566,
+      "faces": 25084,
+      "extents_m": [
+        164.48321533203125,
+        188.0,
+        296.9916076660156
+      ],
+      "is_watertight": false
+    },
+    "rear_left_wheel.stl": {
+      "vertices": 1578,
+      "faces": 3032,
+      "extents_m": [
+        440.0,
+        161.0,
+        440.0
+      ],
+      "is_watertight": true
+    },
+    "rear_left_wheel_module.stl": {
+      "vertices": 11830,
+      "faces": 23672,
+      "extents_m": [
+        136.0,
+        279.0,
+        348.48626708984375
+      ],
+      "is_watertight": false
+    },
+    "rear_right_slider.stl": {
+      "vertices": 12566,
+      "faces": 25084,
+      "extents_m": [
+        164.48321533203125,
+        188.0,
+        296.9916076660156
+      ],
+      "is_watertight": false
+    },
+    "rear_right_wheel.stl": {
+      "vertices": 1578,
+      "faces": 3032,
+      "extents_m": [
+        440.0,
+        161.0,
+        440.0
+      ],
+      "is_watertight": true
+    },
+    "rear_right_wheel_module.stl": {
+      "vertices": 11830,
+      "faces": 23672,
+      "extents_m": [
+        136.0,
+        279.0,
+        348.48626708984375
+      ],
+      "is_watertight": false
+    },
+    "reference_stairs_203r_279g.stl": {
+      "vertices": 38,
+      "faces": 72,
+      "extents_m": [
+        1676.4000244140625,
+        864.0,
+        1219.199951171875
+      ],
+      "is_watertight": false
+    }
+  },
+  "truth_boundary": "Simulation-basis physical parameters for mechanism/control screening. These are not certification data, tire dynamometer data, FEA, or validated physical-prototype measurements."
+}

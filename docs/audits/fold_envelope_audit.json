@@ -1,0 +1,38 @@
+{
+  "truth_boundary": "CAD bounding-box CALC with the pod carrier removed and the folding handle re-posed about its modeled hinge axis. Not a physical fit test, and informational only -- does not gate the overall build. Corner suspension stroke is not parked/retracted in this pose, so this is a partial, conservative (upper-bound) estimate of the true folded envelope.",
+  "folded_bounding_box_mm": [
+    -600.0,
+    -441.0,
+    -5.000000000000003,
+    580.0,
+    444.0,
+    1065.0
+  ],
+  "folded_length_mm": 1180.0,
+  "folded_width_mm": 885.0,
+  "folded_height_mm": 1070.0,
+  "trunk_cargo_opening_reference_mm_ASSUMED": {
+    "width": 1000.0,
+    "height": 700.0,
+    "depth": 900.0,
+    "reason": "Representative mid-size sedan/hatchback trunk cargo opening; typical published figures fall in the 900-1100 mm width x 650-800 mm height range. Not a specific vehicle's measured opening."
+  },
+  "stroller_folded_footprint_reference_mm_ASSUMED": {
+    "length": 850.0,
+    "width": 600.0,
+    "height": 350.0,
+    "reason": "Representative folded footprint of a full-size (non-umbrella) consumer stroller; typical published folded dimensions fall in the 750-950 mm length x 500-650 mm width x 280-420 mm height range. Not a specific product's measured spec."
+  },
+  "comparison": {
+    "fits_stated_trunk_opening": false,
+    "length_vs_stroller_reference_ratio": 1.388235294117647,
+    "width_vs_stroller_reference_ratio": 1.475,
+    "height_vs_stroller_reference_ratio": 3.057142857142857
+  },
+  "open_items": [
+    "Corner suspension is not commanded to a retracted/parked stroke in this pose -- would need a real parked-pose CAD export before this is a production fold spec. Closes when the corner actuators get a sourced parked/retracted position and a corresponding CAD pose.",
+    "The removed pod's own standalone envelope (as a carried car-seat-style unit) is not separately reported here. Closes with a dedicated pod-only bounding-box CALC.",
+    "Trunk and stroller reference dimensions above are representative figures, not measurements of a specific target vehicle or competitor product. Closes when a specific target trunk/vehicle is sourced."
+  ],
+  "result": "FAIL"
+}

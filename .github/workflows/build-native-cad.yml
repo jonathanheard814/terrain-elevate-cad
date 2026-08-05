@@ -15,6 +15,8 @@ on:
       - "scripts/audit_physics_basis.py"
       - "scripts/audit_power_budget.py"
       - "scripts/audit_stair_control_state_machine.py"
+      - "scripts/simulate_dynamic_contact.py"
+      - "requirements-dynamics.txt"
       - "src/terrain_elevate/**"
       - "validate_outputs.py"
       - "data/te_v059_parameters.json"
@@ -39,6 +41,8 @@ on:
       - "scripts/audit_physics_basis.py"
       - "scripts/audit_power_budget.py"
       - "scripts/audit_stair_control_state_machine.py"
+      - "scripts/simulate_dynamic_contact.py"
+      - "requirements-dynamics.txt"
       - "src/terrain_elevate/**"
       - "validate_outputs.py"
       - "data/te_v059_parameters.json"
@@ -71,6 +75,7 @@ jobs:
           python -m pip install --upgrade pip
           python -m pip install -r requirements-cad.txt
           python -m pip install -r requirements-sim.txt
+          python -m pip install -r requirements-dynamics.txt
 
       - name: Build Fusion-ready prototype CAD
         run: |
@@ -98,6 +103,9 @@ jobs:
       - name: Validate outputs - validate_simulation_package.py
         run: python scripts/validate_simulation_package.py
 
+      - name: Dynamic contact simulation - simulate_dynamic_contact.py
+        run: python scripts/simulate_dynamic_contact.py
+
       - name: Validate outputs - audit_design_acceptance.py
         run: python scripts/audit_design_acceptance.py
 
@@ -124,6 +132,7 @@ jobs:
             analysis_out/Terrain_Elevate_P1_V0_59_fold_envelope_audit.json
             analysis_out/Terrain_Elevate_P1_V0_59_power_budget_audit.json
             analysis_out/Terrain_Elevate_P1_V0_59_stair_control_audit.json
+            analysis_out/Terrain_Elevate_P1_V0_59_dynamic_contact_audit.json
             data/te_v059_electrical_system.json
             analysis_out/Terrain_Elevate_P1_V0_59_connectivity_audit.json
             analysis_out/Terrain_Elevate_P1_V0_59_physics_basis_audit.json

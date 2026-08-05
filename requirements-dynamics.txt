@@ -1,0 +1,6 @@
+# Optional rigid-body contact backend. Kept separate from requirements-sim.txt
+# because pybullet has no Windows wheel for every Python version and builds
+# from source there, which needs Microsoft C++ Build Tools -- that is exactly
+# why it failed on the developer's local host. The Linux CI runner installs it
+# without trouble, so dynamic-contact results are produced there.
+pybullet==3.2.7

@@ -51,6 +51,10 @@ MODELLING_LIMITATIONS = [
     "No actuator control loop is applied at this stage: corner actuators are "
     "held at their spawn position. This screen answers whether the model is "
     "physically sound, not whether the vehicle can climb.",
+    "The exported terrain mesh is six stair boxes with no approach floor and no "
+    "top landing, so this script supplies a ground plane. A real stair-climb run "
+    "needs both approach and landing in the terrain itself, otherwise the "
+    "vehicle drives off the top step into nothing.",
 ]
 
 
@@ -122,13 +126,35 @@ def main() -> None:
         physicsClientId=client,
     )
 
+    # The exported stair mesh is SIX STAIR BOXES AND NOTHING ELSE: it spans
+    # x = 0 to steps*going with no approach floor and no landing. Without a
+    # ground plane there is simply nowhere to stand, which is exactly what the
+    # first run of this script discovered -- the vehicle spawned behind the
+    # first riser over empty space and free-fell 15 m at 12.9 m/s with zero
+    # contact points. Add the floor the terrain mesh does not carry. The stair
+    # boxes are built with their base at z = -1 mm, so the plane matches there.
+    ground_level_m = -0.001
+    ground_collision = p.createCollisionShape(p.GEOM_PLANE, physicsClientId=client)
+    ground_body = p.createMultiBody(
+        baseMass=0.0,
+        baseCollisionShapeIndex=ground_collision,
+        basePosition=[0, 0, ground_level_m],
+        physicsClientId=client,
+    )
+    p.changeDynamics(
+        ground_body, -1,
+        lateralFriction=tire["static_friction_mu_ASSUMED"],
+        restitution=0.0,
+        physicsClientId=client,
+    )
+
     # Spawn clear of the stairs and above the ground: the chassis origin sits a
     # slider drop plus a wheel radius above the contact patch, derived here
     # rather than hardcoded so it tracks the wheel-diameter parameter.
     wheel_radius_m = g["wheel_diameter_mm"] / 2000.0
     chassis_above_ground_m = 0.23 + wheel_radius_m
-    spawn_z = chassis_above_ground_m + 0.05  # small drop so settling is visible
-    spawn_x = -1.2  # behind the first riser, on flat ground
+    spawn_z = ground_level_m + chassis_above_ground_m + 0.02  # small drop to settle
+    spawn_x = -1.2  # behind the first riser, on the approach floor added above
 
     robot = p.loadURDF(
         str(urdf_path),
@@ -191,7 +217,8 @@ def main() -> None:
     final_pos, final_orn = p.getBasePositionAndOrientation(robot, physicsClientId=client)
     final_lin, _ = p.getBaseVelocity(robot, physicsClientId=client)
     euler = p.getEulerFromQuaternion(final_orn)
-    contacts = p.getContactPoints(bodyA=robot, bodyB=terrain_body, physicsClientId=client)
+    contacts = list(p.getContactPoints(bodyA=robot, bodyB=terrain_body, physicsClientId=client))
+    contacts += list(p.getContactPoints(bodyA=robot, bodyB=ground_body, physicsClientId=client))
     contact_links = sorted({c[3] for c in contacts})
     max_penetration_mm = 0.0
     if contacts:
@@ -207,7 +234,7 @@ def main() -> None:
     )
     upright = abs(math.degrees(euler[1])) < 10.0 and abs(math.degrees(euler[0])) < 10.0
     resting_height_m = final_pos[2]
-    expected_height_m = chassis_above_ground_m
+    expected_height_m = ground_level_m + chassis_above_ground_m
     height_error_mm = (resting_height_m - expected_height_m) * 1000.0
 
     checks = {

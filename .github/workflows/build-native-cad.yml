@@ -156,6 +156,30 @@ jobs:
             cad_out/Terrain_Elevate_P1_V0_59_folded_pose_isometric.svg
           if-no-files-found: warn
 
+      # The audit JSONs are committed for the same reason the renders are: so
+      # the current engineering status is readable directly on GitHub without
+      # downloading a build artifact. That matters more than usual here --
+      # several screens intentionally report FAIL while exiting 0, so a green
+      # workflow conclusion says nothing about what they actually found.
+      - name: Commit audit results to docs/audits
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        run: |
+          set -euo pipefail
+          mkdir -p docs/audits
+          for a in smooth_climb_audit power_budget_audit design_acceptance_audit                    stair_control_audit dynamic_contact_audit fold_envelope_audit                    connectivity_audit physics_basis_audit requirements_screen; do
+            src="analysis_out/Terrain_Elevate_P1_V0_59_${a}.json"
+            [ -s "$src" ] && cp "$src" "docs/audits/${a}.json" || true
+          done
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add docs/audits
+          if git diff --cached --quiet; then
+            echo "audits unchanged"
+          else
+            git commit -m "Update audit results [skip ci]"
+            git push
+          fi
+
       # Renders are committed into the repo (not just left as run artifacts)
       # so the current design is viewable directly on GitHub without
       # downloading a build. Guarded with [skip ci] and a paths-ignore on

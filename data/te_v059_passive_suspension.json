@@ -1,0 +1,53 @@
+{
+  "truth_boundary": "Derived design specification for the per-corner passive spring/damper. The rate and damping are CALCULATED from this repo's own mass assumptions and a selected natural frequency -- they are NOT a sourced component's measured curve. No spring or damper part has been selected or sourced yet; this specifies what to go and buy, and makes the element real in the simulation model instead of an unmodelled claim.",
+  "why_this_exists": "The ride-quality screen discounts its reported ~108 g peak vertical acceleration by attributing that transient to 'the per-corner passive spring/damper, already in the design'. That element existed only as a CAD envelope cylinder with no rate, and the exported URDF joined the slider to the wheel module with a FIXED joint -- so every model that computes anything had zero series compliance between wheel and chassis apart from the tire. The discount was therefore resting on a part that no analysis contained. This file makes the element real; scripts/export_simulation_package.py turns it into an actual URDF joint.",
+  "topology": {
+    "arrangement": "SERIES, between the commanded corner actuator and the wheel module: chassis -> corner_prismatic_actuator -> slider -> passive_suspension -> wheel_module -> wheel.",
+    "reason": "This is the arrangement that does the job the design text claims. The actuator sets ride height in the low-frequency band it controls (the stair-passing input at 0.716 Hz), and the series spring absorbs the high-frequency wheel-over-nosing transient the actuator cannot touch. It is also the standard active-suspension arrangement: the actuator moves the upper spring mount rather than the wheel directly.",
+    "explicitly_not_parallel": "A spring mounted PARALLEL to the actuator (across it, tower to carriage) would be a different part doing a different job: gravity compensation, offloading static force from the ball screw. Series and parallel elements are frequently conflated. They are not interchangeable -- series elements carry equal force, so a series spring does NOT reduce the actuator's force requirement, and a parallel spring provides NO vibration isolation when the actuator is position-controlled and effectively rigid. Only the series element is specified here.",
+    "cad_ambiguity_OPEN": "The CAD envelope 'passive_spring_damper' sits offset 42 mm from the ball screw inside the tower cassette, with its lower end near the swingarm clevis, so its true attachment is not pinned down by the geometry alone -- it could read as either arrangement. The series interpretation is selected here because it is the one that makes the design's own stated intent true. The CAD should be updated to show the attachment unambiguously before release."
+  },
+  "derivation_CALC": {
+    "method": "Standard quarter-car sizing. Sprung mass per corner sets the spring rate from a selected natural frequency, f_n = (1/2*pi)*sqrt(k/m); damping follows from a selected damping ratio, c = 2*zeta*sqrt(k*m).",
+    "sprung_mass_breakdown_kg": {
+      "chassis": 24.0,
+      "occupant_pod": 12.0,
+      "four_sliders": 16.0,
+      "child_ASSUMED": 22.0,
+      "cargo_ASSUMED": 5.0,
+      "total": 79.0,
+      "per_corner": 19.75,
+      "source": "data/te_v059_mass_properties.json links plus te_v059_load_cases.json mass_assumptions"
+    },
+    "unsprung_mass_per_corner_kg": {
+      "wheel_module": 7.0,
+      "wheel": 2.0,
+      "total": 9.0,
+      "note": "Below the spring, so it is not carried by it. Recorded because unsprung mass drives the wheel-hop mode, which is not evaluated here."
+    },
+    "static_load_per_corner_N": 193.68,
+    "selected_natural_frequency_Hz": 2.0,
+    "selected_damping_ratio": 0.35,
+    "spring_rate_N_per_m": 3119.0,
+    "damping_coefficient_Ns_per_m": 173.7,
+    "static_sag_mm": 62.1,
+    "isolation_begins_above_Hz": 2.83
+  },
+  "selection_rationale": {
+    "why_not_softer": "A lower f_n isolates better but costs travel: 1.5 Hz needs 110 mm of static sag, which does not leave usable bump and rebound travel inside the 280 mm spring envelope drawn in the CAD.",
+    "why_not_stiffer": "A higher f_n gives back travel but raises the frequency above which isolation begins, and the wheel-over-nosing transient is exactly the high-frequency content this element exists to absorb. At 3.0 Hz isolation does not begin until 4.24 Hz.",
+    "why_2_Hz_specifically": "62.1 mm static sag fits the envelope with bump and rebound travel remaining, isolation begins at 2.83 Hz which covers the nosing transient, and f_n sits 2.8x above the 0.716 Hz stair-passing frequency the actuator commands -- so the spring does not absorb commanded ride-height moves and fight the controller. Passenger cars run 1.0-1.5 Hz with far more travel available; compact vehicles with short travel sit higher, so 2.0 Hz is realistic rather than convenient.",
+    "damping_ratio_reason": "0.35 is mid-range for vehicle suspension (roughly 0.2-0.4), balancing transient decay against harshness. Not sourced from a damper curve; a real damper is non-linear and asymmetric between compression and rebound."
+  },
+  "travel_budget_mm": {
+    "static_sag": 62.1,
+    "spring_envelope_length_in_cad": 280.0,
+    "OPEN": "Usable bump and rebound travel have not been set. They need the real spring/damper part plus a hard-stop bumper spec, and must be checked against the corner actuator's 300 mm stroke so the two travels do not collide."
+  },
+  "open_items": [
+    "No spring or damper part is sourced. This file states the target rate, damping and travel to procure against; it is not a bill-of-materials entry and must not be cited as one.",
+    "A real damper is non-linear and typically asymmetric (more rebound damping than compression). This specifies a single linear coefficient, which is a screening simplification.",
+    "The wheel-hop mode set by the 9 kg unsprung corner mass on tire stiffness is not evaluated. At the recorded 180 kN/m tire rate that mode sits near 22 Hz, well inside the ISO 2631-1 weighting band, so it should be checked before any comfort claim.",
+    "Hard-stop bumper engagement is not modelled. te_v059_physics_elements.json already records bumper stiffness and damping, so this closes once travel limits are set."
+  ]
+}

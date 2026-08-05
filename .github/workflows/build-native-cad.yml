@@ -16,6 +16,7 @@ on:
       - "scripts/audit_power_budget.py"
       - "scripts/audit_stair_control_state_machine.py"
       - "scripts/simulate_dynamic_contact.py"
+      - "scripts/audit_geometry_interference.py"
       - "requirements-dynamics.txt"
       - "src/terrain_elevate/**"
       - "validate_outputs.py"
@@ -42,6 +43,7 @@ on:
       - "scripts/audit_power_budget.py"
       - "scripts/audit_stair_control_state_machine.py"
       - "scripts/simulate_dynamic_contact.py"
+      - "scripts/audit_geometry_interference.py"
       - "requirements-dynamics.txt"
       - "src/terrain_elevate/**"
       - "validate_outputs.py"
@@ -97,6 +99,12 @@ jobs:
       - name: Validate outputs - audit_physics_basis.py
         run: python scripts/audit_physics_basis.py
 
+      # Measuring only for now: this is expected to report a large number, and
+      # the point of this run is to find out how large. Not gating the build
+      # until that number is known and the acceptance criteria are rewritten.
+      - name: Measure geometry interference - audit_geometry_interference.py
+        run: python scripts/audit_geometry_interference.py || true
+
       - name: Validate outputs - audit_stair_control_state_machine.py
         run: python scripts/audit_stair_control_state_machine.py
 
@@ -133,6 +141,7 @@ jobs:
             analysis_out/Terrain_Elevate_P1_V0_59_power_budget_audit.json
             analysis_out/Terrain_Elevate_P1_V0_59_stair_control_audit.json
             analysis_out/Terrain_Elevate_P1_V0_59_dynamic_contact_audit.json
+            analysis_out/Terrain_Elevate_P1_V0_59_geometry_interference_audit.json
             data/te_v059_electrical_system.json
             analysis_out/Terrain_Elevate_P1_V0_59_connectivity_audit.json
             analysis_out/Terrain_Elevate_P1_V0_59_physics_basis_audit.json
@@ -166,7 +175,7 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p docs/audits
-          for a in smooth_climb_audit power_budget_audit design_acceptance_audit                    stair_control_audit dynamic_contact_audit fold_envelope_audit                    connectivity_audit physics_basis_audit requirements_screen; do
+          for a in smooth_climb_audit power_budget_audit design_acceptance_audit                    stair_control_audit dynamic_contact_audit fold_envelope_audit                    connectivity_audit physics_basis_audit requirements_screen geometry_interference_audit; do
             src="analysis_out/Terrain_Elevate_P1_V0_59_${a}.json"
             [ -s "$src" ] && cp "$src" "docs/audits/${a}.json" || true
           done

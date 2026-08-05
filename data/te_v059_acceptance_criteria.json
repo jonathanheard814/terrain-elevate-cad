@@ -14,6 +14,11 @@
     "physics_basis_json_with_contact_actuator_sensor_control_parameters",
     "physics_basis_audit_using_installed_simulation_math_libraries"
   ],
+  "geometry_quality": {
+    "max_structural_interference_pairs": 0,
+    "interference_reason": "Two solids occupying the same volume cannot be manufactured or assembled. This was never checked, and the assembly reached 2877 interfering pairs sharing 31.8 litres before anyone measured it. Enforced by scripts/audit_geometry_interference.py.",
+    "cad_body_count_is_not_a_quality_metric": "cad_body_count below is a floor against gutting the model, NOT evidence of design fidelity. Treating it as the latter is what produced the interference above: the cheapest way to satisfy a minimum body count is to scatter more primitives, and the connectivity audit's all-parts-touching rule rewarded overlapping them. Body count and connectivity say nothing about whether the geometry is buildable; max_structural_interference_pairs is the check that does."
+  },
   "minimums": {
     "cad_body_count": 1300,
     "connectivity_largest_group_fraction": 1.0,

@@ -99,11 +99,10 @@ jobs:
       - name: Validate outputs - audit_physics_basis.py
         run: python scripts/audit_physics_basis.py
 
-      # Measuring only for now: this is expected to report a large number, and
-      # the point of this run is to find out how large. Not gating the build
-      # until that number is known and the acceptance criteria are rewritten.
-      - name: Measure geometry interference - audit_geometry_interference.py
-        run: python scripts/audit_geometry_interference.py || true
+      # Now a hard gate: structural interference is at zero and must stay
+      # there. Two solids sharing volume cannot be built.
+      - name: Validate outputs - audit_geometry_interference.py
+        run: python scripts/audit_geometry_interference.py
 
       - name: Validate outputs - audit_stair_control_state_machine.py
         run: python scripts/audit_stair_control_state_machine.py

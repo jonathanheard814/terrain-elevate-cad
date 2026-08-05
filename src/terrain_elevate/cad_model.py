@@ -443,14 +443,27 @@ def _add_corner(components: list[Component], g: dict, code: str, sx: int, sy: in
             _soft_box(prefix + "fork_lower_double_shear_yoke", f"{side} {lr} fork lower double-shear yoke", "60", (x, y, z_axle + 82), (74, 148, 42), 4, material="steel"),
             _soft_box(prefix + "tower_lower_frame_lug", f"{side} {lr} bolted lower tower-to-frame lug", "61", (tower_x, rail_y, 370 + z0), (120, 36, 70), 5),
             _soft_box(prefix + "tower_upper_frame_lug", f"{side} {lr} bolted upper tower-to-frame lug", "61", (tower_x, rail_y, 610 + z0), (120, 36, 70), 5),
-            _soft_box(prefix + "tower_top_thrust_block", f"{side} {lr} ball-screw top thrust bearing block", "62", (tower_x, y, 725 + z0), (96, 96, 42), 6, material="steel"),
-            _soft_box(prefix + "tower_bottom_thrust_block", f"{side} {lr} ball-screw lower support bearing block", "62", (tower_x, y, 300 + z0), (96, 96, 42), 6, material="steel"),
+            # FK12/FF12-style screw support units bolt to the OUTSIDE of the
+            # cassette end faces -- they are 96 x 96, larger than the 92 x 82
+            # cassette cross-section, so they cannot sit inside it. They were
+            # centred on the cassette end planes (725 / 300), straddling the
+            # wall by roughly half their height. Moved clear: the cassette
+            # spans 295..725 in local z, so a 42 mm block sits fully outside at
+            # 725 + 21 and 295 - 21.
+            _soft_box(prefix + "tower_top_thrust_block", f"{side} {lr} ball-screw top thrust bearing block", "62", (tower_x, y, 746 + z0), (96, 96, 42), 6, material="steel"),
+            _soft_box(prefix + "tower_bottom_thrust_block", f"{side} {lr} ball-screw lower support bearing block", "62", (tower_x, y, 274 + z0), (96, 96, 42), 6, material="steel"),
             _cylinder(prefix + "steer_kingpin_bearing", f"{side} {lr} steering kingpin bearing stack", "60", (x, y, 445 + z0), 22, 270, "Z"),
             _cylinder(prefix + "kingpin_upper_taper_bearing", f"{side} {lr} upper kingpin bearing cone envelope", "60", (x, y, 545 + z0), 27, 22, "Z", "steel"),
             _cylinder(prefix + "kingpin_lower_taper_bearing", f"{side} {lr} lower kingpin bearing cone envelope", "60", (x, y, 345 + z0), 27, 22, "Z", "steel"),
             _cylinder(prefix + "kingpin_preload_locknut", f"{side} {lr} kingpin preload locknut", "FASTENER", (x, y, 585 + z0), 18, 12, "Z", "black_oxide_steel"),
             _soft_box(prefix + "steer_center_lock", f"{side} {lr} steering positive center lock", "66", (x, y, 590 + z0), (92, 68, 34), 5),
-            _soft_box(prefix + "suspension_tower_cassette", f"{side} {lr} vertical suspension cassette", "61", (tower_x, y, 510 + z0), (92, 82, 430), 6),
+            # A cassette is a HOUSING: the ball screw, guide rails, slider
+            # plate and spring all live inside it. Modelled as a solid block it
+            # was the single worst interference source in the assembly -- 9469
+            # cm3 across 294 pairs, about 30% of all structural interference,
+            # simply because every component it contains was buried in solid
+            # material. Hollow shell with a 3 mm wall.
+            _shell_box(prefix + "suspension_tower_cassette", f"{side} {lr} vertical suspension cassette", "61", (tower_x, y, 510 + z0), (92, 82, 430), 3.0, 6),
             _cylinder(prefix + "swingarm_pivot_25mm", f"{side} {lr} 25 mm swingarm pivot shaft", "60", (x - sx * 108, y, 314 + z0), g["swingarm_pivot_diameter_mm"] / 2, 176, "Y"),
             _rod_xz(prefix + "lower_swingarm_left_link", f"{side} {lr} lower swing arm left tubular link", "60", (tower_x, y + sy * 35, 360 + z0), (x, y + sy * 35, z_axle + 105), 11, "steel"),
             _rod_xz(prefix + "lower_swingarm_right_link", f"{side} {lr} lower swing arm right tubular link", "60", (tower_x, y - sy * 35, 360 + z0), (x, y - sy * 35, z_axle + 105), 11, "steel"),
@@ -499,7 +512,10 @@ def _add_corner(components: list[Component], g: dict, code: str, sx: int, sy: in
             _cylinder(prefix + "corner_signal_harness_conduit", f"{side} {lr} sealed signal harness conduit", "67/68", (tower_x + sx * 40, y - sy * 96, 620 + z0), 5, 160, "X", "plastic"),
             _soft_box(prefix + "harness_backbone_rail", f"{side} {lr} harness backbone rail tied to suspension tower", "67/68/69", (tower_x + sx * 96, y + sy * 116, 535 + z0), (28, 28, 390), 3, material="steel"),
             _soft_box(prefix + "harness_backbone_standoff_upper", f"{side} {lr} upper harness rail standoff to tower cassette", "67/68/69", (tower_x + sx * 48, y + sy * 58, 642 + z0), (118, 128, 18), 3, material="steel"),
-            _soft_box(prefix + "harness_backbone_standoff_lower", f"{side} {lr} lower harness rail standoff to tower cassette", "67/68/69", (tower_x + sx * 48, y + sy * 58, 426 + z0), (118, 128, 18), 3, material="steel"),
+            # Dropped 11 mm: at z 426 this 18 mm-thick standoff spanned
+            # 417..435 and ran into the lower pushrod rod-end head, which
+            # occupies 426.5..453.5. Now clears it by ~2.5 mm.
+            _soft_box(prefix + "harness_backbone_standoff_lower", f"{side} {lr} lower harness rail standoff to tower cassette", "67/68/69", (tower_x + sx * 48, y + sy * 58, 415 + z0), (118, 128, 18), 3, material="steel"),
             _gusset(prefix + "tower_frame_gusset", f"{side} {lr} triangular tower to rail gusset", "61", (tower_x + sx * 42, y, 375 + z0), 165, 160, 8, sx),
         ]
     )
@@ -565,8 +581,14 @@ def _add_corner(components: list[Component], g: dict, code: str, sx: int, sy: in
         (
             (x + sx * 32, y + sy * 61, z_axle + 18),
             (x + sx * 56, y + sy * 61, z_axle + 18),
-            (tower_x + sx * 58, y - 10, 472 + z0),
-            (tower_x + sx * 58, y + 10, 472 + z0),
+            # Coaxial pair, both driven along +Y. An M3 bolt here spans -11 to
+            # +12 mm about its centre (washer behind, head in front), so the
+            # two need at least 23 mm of separation or the head of one lands
+            # inside the washer of the other. They were at +/-10. The pair at
+            # index 4/5 below already sits at +/-12 and just clears; these now
+            # sit at +/-13 for a little margin.
+            (tower_x + sx * 58, y - 13, 472 + z0),
+            (tower_x + sx * 58, y + 13, 472 + z0),
             (tower_x + sx * 84, y - 12, 430 + z0),
             (tower_x + sx * 84, y + 12, 430 + z0),
         )
@@ -590,10 +612,21 @@ def _add_corner(components: list[Component], g: dict, code: str, sx: int, sy: in
 
     for i, pin_z in enumerate((z_axle + 105, z_axle + 250, 360 + z0, 515 + z0)):
         pin_x = x if i < 2 else tower_x
-        components.extend(_bolt_y(prefix + f"suspension_link_pin_{i}", (pin_x, y, pin_z), 146, 10))
+        # Each of these pivots previously carried TWO pins on the same axis at
+        # the same point: a plain M10 link bolt and a separate load-sensing pin
+        # element. They occupied the same hole -- 16 of the assembly's last 21
+        # interferences. The sourced part register is explicit that the
+        # Strainsert load pins "replace clevis/shear pins directly", so the
+        # instrumented pin IS the pivot pin and the plain bolt was redundant.
+        #
+        # Sizing also corrected: both former pins were Ø10 inside an iglidur
+        # bushing bored Ø21, leaving 5.5 mm of radial slop in what is supposed
+        # to be a bearing fit. The pin is now Ø20.8, a 0.1 mm radial clearance
+        # in that bore, and long enough to reach the DIN 985 locknut that
+        # retains it rather than stopping short in mid-air.
         components.append(_tube(prefix + f"iglidur_g_pivot_bushing_{i}", f"{side} {lr} iglidur G pivot bushing sleeve", "60", (pin_x, y, pin_z), 15, 10.5, 104, "Y", "plastic"))
         components.append(_tube(prefix + f"aurora_m10_rod_end_outer_race_{i}", f"{side} {lr} Aurora AM-M10T rod-end bearing race at suspension pivot", "60", (pin_x, y + sy * 49, pin_z), 13.5, 5.0, 14.0, "Y", "steel"))
-        components.append(_cylinder(prefix + f"load_sensing_pivot_pin_{i}", f"{side} {lr} load-sensing suspension pivot pin element", "67/68", (pin_x, y, pin_z), 5.0, 120, "Y", "steel"))
+        components.append(_cylinder(prefix + f"load_sensing_pivot_pin_{i}", f"{side} {lr} Strainsert load-sensing suspension pivot pin", "67/68", (pin_x, y, pin_z), 10.4, 156, "Y", "steel"))
         components.append(_cylinder(prefix + f"din985_m10_locknut_{i}", f"{side} {lr} M10 prevailing torque lock nut at suspension pin", "FASTENER", (pin_x, y - sy * 84, pin_z), 12, 10, "Y", "black_oxide_steel"))
 
     for i, (px, pz) in enumerate(((tower_x + sx * 45, 440 + z0), (x, z_axle + 278))):
@@ -636,7 +669,161 @@ def _add_reference_geometry(components: list[Component], g: dict) -> None:
         )
 
 
-def build_components(params: dict, include_reference: bool = False) -> list[Component]:
+#: Interference-resolution priority, highest first. When two solids overlap,
+#: the LOWER-priority one is cut so the pair meets on a real mating surface
+#: instead of sharing volume. The ordering is functional, not arbitrary:
+#: purchased parts and fasteners cannot be machined to suit, so everything
+#: fabricated yields to them; brackets and covers yield to primary structure.
+#: A fastener cutting a plate is exactly a clearance hole, which is what the
+#: assembly was missing entirely.
+_PRIORITY_RULES: tuple[tuple[int, tuple[str, ...]], ...] = (
+    # Fasteners rank ABOVE everything, including purchased parts. A bolt is not
+    # a part competing for space -- it is the definition of a hole in whatever
+    # it passes through, so it must always be the cutter and never the cut.
+    # Ranking them below purchased components carved the shanks off every bolt
+    # threading into a motor or bearing housing.
+    (200, ("bolt", "screw", "washer", "locknut", "_nut", "nut_", "shaft_collar")),
+    # Purchased components: dimensionally fixed by the supplier.
+    (100, ("bnk2010", "hsr15", "fk12", "ff12", "maxon", "ec_i_52", "gpx52", "ab44",
+           "bg75", "plg75", "electrak", "o1d100", "tf1", "rfc", "novotechnik",
+           "deutsch", "littelfuse", "orion", "iglidur", "igubal", "aurora",
+           "strainsert", "hellermann", "thrust_block", "bearing", "encoder",
+           "battery_pack", "bms", "charger", "dc_dc", "contactor", "fuse")),
+    # Rotating/ground-contact hardware.
+    (80, ("tire_", "hub_", "wheel_", "rim_", "tread_lug", "kingpin", "pivot")),
+    # Primary structure.
+    (70, ("chassis", "main_rail", "crossmember", "cassette", "tower", "frame_",
+          "swingarm", "fork_", "trunnion", "hinge")),
+    # Secondary structure.
+    (50, ("bracket", "mount", "gusset", "clevis", "yoke", "lug", "standoff",
+          "plate", "bridge", "carriage", "rail")),
+    # Enclosures and trim yield to everything they wrap.
+    (30, ("shell", "cover", "shroud", "panel", "fender", "pad", "seat_")),
+    # Routing and soft goods yield to all hardware.
+    (10, ("harness", "cable", "loom", "grommet", "tie")),
+)
+
+#: If cutting would remove more than this fraction of a part, the pair is a
+#: layout fault (two things designed into the same space), not a mating detail.
+#: Those are reported rather than silently carved away.
+_MAX_CUT_FRACTION = 0.60
+
+
+def _priority(name: str) -> int:
+    lowered = name.lower()
+    for rank, tokens in _PRIORITY_RULES:
+        if any(t in lowered for t in tokens):
+            return rank
+    return 40  # unclassified fabricated part
+
+
+def resolve_interferences(components: list[Component]) -> tuple[list[Component], list[dict]]:
+    """Cut overlapping solids so no two parts occupy the same volume.
+
+    Returns the resolved components and a list of unresolved layout faults --
+    pairs where cutting would destroy the smaller part, which means the two
+    were designed into the same space and need moving, not carving.
+    """
+    shapes = {}
+    boxes = {}
+    volumes = {}
+    for c in components:
+        s = c.shape.val()
+        shapes[c.name] = s
+        boxes[c.name] = s.BoundingBox()
+        volumes[c.name] = s.Volume()
+
+    names = [c.name for c in components]
+    faults: list[dict] = []
+
+    # DECIDE first, APPLY once. Cutting a part pair-by-pair as clashes were
+    # found made every subsequent boolean on that part slower, because each cut
+    # complicates its B-rep -- the chassis was re-cut by several hundred bolts
+    # one at a time. That took ~15 hours. Deciding every cut against the
+    # ORIGINAL geometry and then applying one batched cut per part does the
+    # same work in a small fraction of the boolean operations.
+    #
+    # Deciding on original geometry is also conservative in the right
+    # direction: cuts only ever remove material, so a decision made against an
+    # uncut tool can only over-cut slightly, never leave residual overlap.
+    cutters: dict[str, list[str]] = {}
+
+    n = len(names)
+    for i in range(n):
+        a = names[i]
+        ba = boxes[a]
+        for j in range(i + 1, n):
+            b = names[j]
+            bb_ = boxes[b]
+            if not (ba.xmin < bb_.xmax and bb_.xmin < ba.xmax
+                    and ba.ymin < bb_.ymax and bb_.ymin < ba.ymax
+                    and ba.zmin < bb_.zmax and bb_.zmin < ba.zmax):
+                continue
+            try:
+                inter = shapes[a].intersect(shapes[b])
+                vol = inter.Volume() if inter is not None else 0.0
+            except Exception:  # noqa: BLE001
+                continue
+            if vol <= 1.0:
+                continue
+
+            pa, pb = _priority(a), _priority(b)
+            if pa < pb:
+                low, high = a, b
+            elif pb < pa:
+                low, high = b, a
+            else:
+                low, high = (a, b) if a < b else (b, a)  # deterministic tie-break
+            frac_low = vol / volumes[low] if volumes[low] > 0 else 1.0
+            frac_high = vol / volumes[high] if volumes[high] > 0 else 1.0
+
+            # Normally the lower-priority part yields. But if that would carve
+            # away most of it, the small part is EMBEDDED in the large one --
+            # a contact seated in a connector body, a guide block wrapping its
+            # rail, a bearing in its housing. The physically correct answer
+            # there is a cavity in the larger part, not a mutilated small one,
+            # so the cut direction reverses. Only when neither part can absorb
+            # the cut are the two genuinely designed into the same space.
+            if frac_low <= _MAX_CUT_FRACTION:
+                victim, tool = low, high
+            elif frac_high <= _MAX_CUT_FRACTION:
+                victim, tool = high, low
+            else:
+                faults.append({
+                    "part": low,
+                    "clashes_with": high,
+                    "fraction_of_part": round(frac_low, 3),
+                    "fraction_of_other": round(frac_high, 3),
+                    "volume_mm3": round(vol, 1),
+                })
+                continue
+            cutters.setdefault(victim, []).append(tool)
+
+    for victim, tools in cutters.items():
+        try:
+            cut = shapes[victim].cut(*[shapes[t] for t in tools])
+            if cut is not None and cut.Volume() > 1.0:
+                shapes[victim] = cut
+        except Exception:  # noqa: BLE001
+            # Fall back to one-at-a-time for this part only, so a single
+            # problematic boolean cannot abandon all of its cuts.
+            for t in tools:
+                try:
+                    cut = shapes[victim].cut(shapes[t])
+                    if cut is not None and cut.Volume() > 1.0:
+                        shapes[victim] = cut
+                except Exception:  # noqa: BLE001
+                    continue
+
+    resolved = [
+        Component(c.name, c.role, c.callout, cq.Workplane(obj=shapes[c.name]), c.material)
+        for c in components
+    ]
+    return resolved, faults
+
+
+def build_components(params: dict, include_reference: bool = False,
+                     resolve: bool = True) -> list[Component]:
     g = params["geometry"]
     components: list[Component] = []
     _add_chassis(components, g)
@@ -647,6 +834,8 @@ def build_components(params: dict, include_reference: bool = False) -> list[Comp
         _add_corner(components, g, code, sx, sy)
     if include_reference:
         _add_reference_geometry(components, g)
+    if resolve:
+        components, _ = resolve_interferences(components)
     return components
 
 

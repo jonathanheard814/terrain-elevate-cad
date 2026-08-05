@@ -168,6 +168,15 @@ def main() -> None:
         "worst_25": structural[:25],
     }}, indent=2))
 
+    # Hard gate. This started at 2877 clashing pairs and 31.8 litres of shared
+    # volume; it is now zero, and zero is the only defensible value -- two
+    # solids in the same space cannot be manufactured. Gating it here means the
+    # assembly can never silently drift back, which is exactly what happened
+    # while the only geometry checks were a body-count minimum and a
+    # touching-group test that overlap satisfied trivially.
+    if structural:
+        raise SystemExit(1)
+
 
 if __name__ == "__main__":
     main()

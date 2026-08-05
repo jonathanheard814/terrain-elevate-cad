@@ -23,6 +23,7 @@ def main() -> None:
     physics_audit = _load(ROOT / "analysis_out" / "Terrain_Elevate_P1_V0_59_physics_basis_audit.json")
     smooth_climb_audit = _load(ROOT / "analysis_out" / "Terrain_Elevate_P1_V0_59_smooth_climb_audit.json")
     minimums = criteria["minimums"]
+    geometry_quality = criteria.get("geometry_quality", {})
 
     errors: list[str] = []
     if manifest.get("component_count", 0) < minimums["cad_body_count"]:
@@ -79,6 +80,23 @@ def main() -> None:
         errors.append("Missing 1001-sample stair phase actuator sweep")
     if physics_audit.get("result") != "PASS":
         errors.append("Physics basis audit does not pass")
+    # Geometric buildability. Body count and connectivity above are satisfied
+    # trivially by overlapping solids, so neither notices an unbuildable
+    # assembly; this is the check that does.
+    interference_path = ROOT / "analysis_out" / "Terrain_Elevate_P1_V0_59_geometry_interference_audit.json"
+    if not interference_path.exists():
+        errors.append("Geometry interference audit did not run")
+    else:
+        interference = _load(interference_path)
+        pairs = interference.get("structural_interference", {}).get("pair_count")
+        allowed = geometry_quality.get("max_structural_interference_pairs", 0)
+        if pairs is None:
+            errors.append("Geometry interference audit produced no pair count")
+        elif pairs > allowed:
+            errors.append(
+                f"Assembly has {pairs} structurally interfering part pairs "
+                f"(allowed {allowed}); solids sharing volume cannot be built"
+            )
     required_physics_libraries = physics_basis.get("installed_or_supported_libraries", {})
     for library_name in ("scipy", "casadi", "trimesh"):
         if not required_physics_libraries.get(library_name, {}).get("required"):

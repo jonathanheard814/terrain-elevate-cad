@@ -16,8 +16,8 @@
   "preview_sensor_process_s": 0.005,
   "mesh_reports": {
     "chassis.stl": {
-      "vertices": 361950,
-      "faces": 720920,
+      "vertices": 457624,
+      "faces": 1073172,
       "extents_m": [
         1179.5,
         885.0,
@@ -26,8 +26,8 @@
       "is_watertight": false
     },
     "front_left_slider.stl": {
-      "vertices": 12566,
-      "faces": 25084,
+      "vertices": 17619,
+      "faces": 36292,
       "extents_m": [
         164.5,
         188.0,
@@ -36,28 +36,28 @@
       "is_watertight": false
     },
     "front_left_wheel.stl": {
-      "vertices": 1578,
-      "faces": 3032,
+      "vertices": 6476,
+      "faces": 12979,
       "extents_m": [
         440.0,
         161.0,
         440.0
       ],
-      "is_watertight": true
+      "is_watertight": false
     },
     "front_left_wheel_module.stl": {
-      "vertices": 11830,
-      "faces": 23672,
+      "vertices": 21361,
+      "faces": 50042,
       "extents_m": [
         136.0,
         279.0,
-        348.47821044921875
+        343.8643798828125
       ],
       "is_watertight": false
     },
     "front_right_slider.stl": {
-      "vertices": 12566,
-      "faces": 25084,
+      "vertices": 17748,
+      "faces": 36809,
       "extents_m": [
         164.5,
         188.0,
@@ -66,28 +66,28 @@
       "is_watertight": false
     },
     "front_right_wheel.stl": {
-      "vertices": 1578,
-      "faces": 3032,
+      "vertices": 6580,
+      "faces": 13316,
       "extents_m": [
         440.0,
         161.0,
         440.0
       ],
-      "is_watertight": true
+      "is_watertight": false
     },
     "front_right_wheel_module.stl": {
-      "vertices": 11830,
-      "faces": 23672,
+      "vertices": 21332,
+      "faces": 50090,
       "extents_m": [
         136.0,
         279.0,
-        348.47821044921875
+        343.8643798828125
       ],
       "is_watertight": false
     },
     "occupant_pod.stl": {
-      "vertices": 32410,
-      "faces": 64792,
+      "vertices": 37963,
+      "faces": 89607,
       "extents_m": [
         576.0,
         614.0,
@@ -96,8 +96,8 @@
       "is_watertight": false
     },
     "rear_left_slider.stl": {
-      "vertices": 12566,
-      "faces": 25084,
+      "vertices": 18176,
+      "faces": 37645,
       "extents_m": [
         164.48321533203125,
         188.0,
@@ -106,28 +106,28 @@
       "is_watertight": false
     },
     "rear_left_wheel.stl": {
-      "vertices": 1578,
-      "faces": 3032,
+      "vertices": 6388,
+      "faces": 12802,
       "extents_m": [
         440.0,
         161.0,
         440.0
       ],
-      "is_watertight": true
+      "is_watertight": false
     },
     "rear_left_wheel_module.stl": {
-      "vertices": 11830,
-      "faces": 23672,
+      "vertices": 20555,
+      "faces": 48444,
       "extents_m": [
         136.0,
         279.0,
-        348.48626708984375
+        343.8643798828125
       ],
       "is_watertight": false
     },
     "rear_right_slider.stl": {
-      "vertices": 12566,
-      "faces": 25084,
+      "vertices": 18292,
+      "faces": 38138,
       "extents_m": [
         164.48321533203125,
         188.0,
@@ -136,22 +136,22 @@
       "is_watertight": false
     },
     "rear_right_wheel.stl": {
-      "vertices": 1578,
-      "faces": 3032,
+      "vertices": 6608,
+      "faces": 13373,
       "extents_m": [
         440.0,
         161.0,
         440.0
       ],
-      "is_watertight": true
+      "is_watertight": false
     },
     "rear_right_wheel_module.stl": {
-      "vertices": 11830,
-      "faces": 23672,
+      "vertices": 20517,
+      "faces": 48474,
       "extents_m": [
         136.0,
         279.0,
-        348.48626708984375
+        343.8643798828125
       ],
       "is_watertight": false
     },

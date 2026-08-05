@@ -1,0 +1,271 @@
+{
+  "truth_boundary": "Geometric interference only. Says nothing about whether the design is mechanically sensible -- only whether it is physically buildable.",
+  "method": "AABB broad phase over all pairs, then exact boolean-intersection volume on each candidate. Fastener clashes are separated out because this model has no drilled holes, so a bolt through a plate necessarily registers.",
+  "physical_solids_checked": 1463,
+  "reference_solids_skipped": 4,
+  "aabb_candidate_pairs": 4701,
+  "narrow_phase_failures": 0,
+  "structural_interference": {
+    "pair_count": 2877,
+    "total_volume_mm3": 31839234.4,
+    "distinct_parts_involved": 915,
+    "worst_25": [
+      {
+        "a": "seat_pan_shell",
+        "b": "seat_back_shell",
+        "interference_volume_mm3": 735105.35,
+        "fraction_of_smaller_part": 0.1133,
+        "involves_fastener": false
+      },
+      {
+        "a": "rl_suspension_tower_cassette",
+        "b": "rl_rear_module_mount_bracket",
+        "interference_volume_mm3": 316876.46,
+        "fraction_of_smaller_part": 0.2959,
+        "involves_fastener": false
+      },
+      {
+        "a": "rr_suspension_tower_cassette",
+        "b": "rr_rear_module_mount_bracket",
+        "interference_volume_mm3": 316876.46,
+        "fraction_of_smaller_part": 0.2959,
+        "involves_fastener": false
+      },
+      {
+        "a": "fl_suspension_tower_cassette",
+        "b": "fl_swingarm_clevis_at_tower",
+        "interference_volume_mm3": 202561.77,
+        "fraction_of_smaller_part": 0.698,
+        "involves_fastener": false
+      },
+      {
+        "a": "fr_suspension_tower_cassette",
+        "b": "fr_swingarm_clevis_at_tower",
+        "interference_volume_mm3": 202561.77,
+        "fraction_of_smaller_part": 0.698,
+        "involves_fastener": false
+      },
+      {
+        "a": "rl_suspension_tower_cassette",
+        "b": "rl_swingarm_clevis_at_tower",
+        "interference_volume_mm3": 202561.77,
+        "fraction_of_smaller_part": 0.698,
+        "involves_fastener": false
+      },
+      {
+        "a": "rr_suspension_tower_cassette",
+        "b": "rr_swingarm_clevis_at_tower",
+        "interference_volume_mm3": 202561.77,
+        "fraction_of_smaller_part": 0.698,
+        "involves_fastener": false
+      },
+      {
+        "a": "imu_mounting_plate_to_frame",
+        "b": "imu_crossmember_to_trunnions",
+        "interference_volume_mm3": 195853.92,
+        "fraction_of_smaller_part": 0.9037,
+        "involves_fastener": false
+      },
+      {
+        "a": "fl_tower_bottom_thrust_block",
+        "b": "fl_suspension_tower_cassette",
+        "interference_volume_mm3": 192505.16,
+        "fraction_of_smaller_part": 0.5064,
+        "involves_fastener": false
+      },
+      {
+        "a": "fr_tower_bottom_thrust_block",
+        "b": "fr_suspension_tower_cassette",
+        "interference_volume_mm3": 192505.16,
+        "fraction_of_smaller_part": 0.5064,
+        "involves_fastener": false
+      },
+      {
+        "a": "rl_tower_bottom_thrust_block",
+        "b": "rl_suspension_tower_cassette",
+        "interference_volume_mm3": 192505.16,
+        "fraction_of_smaller_part": 0.5064,
+        "involves_fastener": false
+      },
+      {
+        "a": "rr_tower_bottom_thrust_block",
+        "b": "rr_suspension_tower_cassette",
+        "interference_volume_mm3": 192505.16,
+        "fraction_of_smaller_part": 0.5064,
+        "involves_fastener": false
+      },
+      {
+        "a": "fl_suspension_tower_cassette",
+        "b": "fl_passive_spring_damper",
+        "interference_volume_mm3": 182488.29,
+        "fraction_of_smaller_part": 0.6403,
+        "involves_fastener": false
+      },
+      {
+        "a": "fr_suspension_tower_cassette",
+        "b": "fr_passive_spring_damper",
+        "interference_volume_mm3": 182488.29,
+        "fraction_of_smaller_part": 0.6403,
+        "involves_fastener": false
+      },
+      {
+        "a": "rl_suspension_tower_cassette",
+        "b": "rl_passive_spring_damper",
+        "interference_volume_mm3": 182488.29,
+        "fraction_of_smaller_part": 0.6403,
+        "involves_fastener": false
+      },
+      {
+        "a": "rr_suspension_tower_cassette",
+        "b": "rr_passive_spring_damper",
+        "interference_volume_mm3": 182488.29,
+        "fraction_of_smaller_part": 0.6403,
+        "involves_fastener": false
+      },
+      {
+        "a": "handle_left_upright",
+        "b": "handle_left_lower_yoke_link",
+        "interference_volume_mm3": 163605.55,
+        "fraction_of_smaller_part": 0.5082,
+        "involves_fastener": false
+      },
+      {
+        "a": "handle_right_upright",
+        "b": "handle_right_lower_yoke_link",
+        "interference_volume_mm3": 163605.55,
+        "fraction_of_smaller_part": 0.5082,
+        "involves_fastener": false
+      },
+      {
+        "a": "fl_fork_lower_double_shear_yoke",
+        "b": "fl_swingarm_clevis_at_fork",
+        "interference_volume_mm3": 157818.32,
+        "fraction_of_smaller_part": 0.4627,
+        "involves_fastener": false
+      },
+      {
+        "a": "fr_fork_lower_double_shear_yoke",
+        "b": "fr_swingarm_clevis_at_fork",
+        "interference_volume_mm3": 157818.32,
+        "fraction_of_smaller_part": 0.4627,
+        "involves_fastener": false
+      },
+      {
+        "a": "rl_fork_lower_double_shear_yoke",
+        "b": "rl_swingarm_clevis_at_fork",
+        "interference_volume_mm3": 157818.32,
+        "fraction_of_smaller_part": 0.4627,
+        "involves_fastener": false
+      },
+      {
+        "a": "rr_fork_lower_double_shear_yoke",
+        "b": "rr_swingarm_clevis_at_fork",
+        "interference_volume_mm3": 157818.32,
+        "fraction_of_smaller_part": 0.4627,
+        "involves_fastener": false
+      },
+      {
+        "a": "fl_tire_430x75",
+        "b": "fl_suspension_tower_cassette",
+        "interference_volume_mm3": 156865.58,
+        "fraction_of_smaller_part": 0.0683,
+        "involves_fastener": false
+      },
+      {
+        "a": "fr_tire_430x75",
+        "b": "fr_suspension_tower_cassette",
+        "interference_volume_mm3": 156865.58,
+        "fraction_of_smaller_part": 0.0683,
+        "involves_fastener": false
+      },
+      {
+        "a": "rl_tire_430x75",
+        "b": "rl_suspension_tower_cassette",
+        "interference_volume_mm3": 156865.57,
+        "fraction_of_smaller_part": 0.0683,
+        "involves_fastener": false
+      }
+    ]
+  },
+  "fastener_interference": {
+    "pair_count": 701,
+    "note": "Expected in this model because no holes are modelled. Becomes a real finding once fastener holes exist -- until then it is a measure of how much of the assembly is represented rather than designed.",
+    "worst_10": [
+      {
+        "a": "fl_suspension_tower_cassette",
+        "b": "fl_ballnut_carriage_bridge",
+        "interference_volume_mm3": 363089.97,
+        "fraction_of_smaller_part": 0.7884,
+        "involves_fastener": true
+      },
+      {
+        "a": "fr_suspension_tower_cassette",
+        "b": "fr_ballnut_carriage_bridge",
+        "interference_volume_mm3": 363089.97,
+        "fraction_of_smaller_part": 0.7884,
+        "involves_fastener": true
+      },
+      {
+        "a": "rl_suspension_tower_cassette",
+        "b": "rl_ballnut_carriage_bridge",
+        "interference_volume_mm3": 363089.97,
+        "fraction_of_smaller_part": 0.7884,
+        "involves_fastener": true
+      },
+      {
+        "a": "rr_suspension_tower_cassette",
+        "b": "rr_ballnut_carriage_bridge",
+        "interference_volume_mm3": 363089.97,
+        "fraction_of_smaller_part": 0.7884,
+        "involves_fastener": true
+      },
+      {
+        "a": "fl_ballnut_carriage_bridge",
+        "b": "fl_moving_slider_plate",
+        "interference_volume_mm3": 153504.0,
+        "fraction_of_smaller_part": 0.5953,
+        "involves_fastener": true
+      },
+      {
+        "a": "fr_ballnut_carriage_bridge",
+        "b": "fr_moving_slider_plate",
+        "interference_volume_mm3": 153504.0,
+        "fraction_of_smaller_part": 0.5953,
+        "involves_fastener": true
+      },
+      {
+        "a": "rl_ballnut_carriage_bridge",
+        "b": "rl_moving_slider_plate",
+        "interference_volume_mm3": 153504.0,
+        "fraction_of_smaller_part": 0.5953,
+        "involves_fastener": true
+      },
+      {
+        "a": "rr_ballnut_carriage_bridge",
+        "b": "rr_moving_slider_plate",
+        "interference_volume_mm3": 153504.0,
+        "fraction_of_smaller_part": 0.5953,
+        "involves_fastener": true
+      },
+      {
+        "a": "fl_ballnut_carriage_bridge",
+        "b": "fl_hsr15c_guide_block_a",
+        "interference_volume_mm3": 57399.35,
+        "fraction_of_smaller_part": 0.9126,
+        "involves_fastener": true
+      },
+      {
+        "a": "fl_ballnut_carriage_bridge",
+        "b": "fl_hsr15c_guide_block_b",
+        "interference_volume_mm3": 57399.35,
+        "fraction_of_smaller_part": 0.9126,
+        "involves_fastener": true
+      }
+    ]
+  },
+  "open_items": [
+    "No hole features are modelled anywhere in the assembly, so fasteners intersect the parts they pass through by construction. Until holes exist, fastener_interference cannot distinguish a represented joint from a modelling error.",
+    "This audit does not check clearance -- parts that merely touch, or sit implausibly close without overlapping, pass. Minimum-clearance checking needs a real assembly-tolerance budget, which does not exist yet."
+  ],
+  "result": "FAIL"
+}

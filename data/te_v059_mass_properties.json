@@ -1,5 +1,5 @@
 {
-  "truth_boundary": "Screen-level mass properties for simulation import and mechanism debugging. Replace with weighed/procured part masses before design release.",
+  "truth_boundary": "Screen-level mass properties for simulation import and mechanism debugging. Replace with weighed/procured part masses before design release. NOTE: cylinder_inertia_radius_m/cylinder_inertia_length_m are geometry, not mass properties -- they are DERIVED from data/te_v059_parameters.json by scripts/export_simulation_package.py, which hard-fails if the values recorded here disagree. Edit the geometry in parameters.json, not here.",
   "links": {
     "chassis": {
       "mass_kg": 24.0,
@@ -43,22 +43,22 @@
     },
     "front_left_wheel": {
       "mass_kg": 2.0,
-      "cylinder_inertia_radius_m": 0.14,
+      "cylinder_inertia_radius_m": 0.215,
       "cylinder_inertia_length_m": 0.075
     },
     "front_right_wheel": {
       "mass_kg": 2.0,
-      "cylinder_inertia_radius_m": 0.14,
+      "cylinder_inertia_radius_m": 0.215,
       "cylinder_inertia_length_m": 0.075
     },
     "rear_left_wheel": {
       "mass_kg": 2.0,
-      "cylinder_inertia_radius_m": 0.14,
+      "cylinder_inertia_radius_m": 0.215,
       "cylinder_inertia_length_m": 0.075
     },
     "rear_right_wheel": {
       "mass_kg": 2.0,
-      "cylinder_inertia_radius_m": 0.14,
+      "cylinder_inertia_radius_m": 0.215,
       "cylinder_inertia_length_m": 0.075
     }
   }

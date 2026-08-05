@@ -34,6 +34,34 @@ def _inertia_wheel(mass: float, radius: float, length: float) -> dict[str, float
     return {"ixx": i_transverse, "iyy": i_axis, "izz": i_transverse, "ixy": 0.0, "ixz": 0.0, "iyz": 0.0}
 
 
+def _check_derived_wheel_geometry(mass_props: dict, radius_m: float, length_m: float) -> None:
+    """Fail loudly if mass_properties.json still carries stale wheel geometry.
+
+    The values are no longer read for the export -- geometry comes from
+    parameters.json -- but leaving a contradictory number in the data file
+    would mislead anyone reading it, so the two must agree.
+    """
+    mismatches = []
+    for name, props in mass_props["links"].items():
+        if "cylinder_inertia_radius_m" not in props:
+            continue
+        if abs(props["cylinder_inertia_radius_m"] - radius_m) > 1e-6:
+            mismatches.append(
+                f"{name}: cylinder_inertia_radius_m={props['cylinder_inertia_radius_m']} "
+                f"but wheel_diameter_mm implies {radius_m}"
+            )
+        if abs(props["cylinder_inertia_length_m"] - length_m) > 1e-6:
+            mismatches.append(
+                f"{name}: cylinder_inertia_length_m={props['cylinder_inertia_length_m']} "
+                f"but wheel_width_mm implies {length_m}"
+            )
+    if mismatches:
+        raise SystemExit(
+            "mass_properties.json wheel geometry disagrees with parameters.json:\n  "
+            + "\n  ".join(mismatches)
+        )
+
+
 def _add_inertial(link: ET.Element, mass: float, inertia: dict[str, float]) -> None:
     inertial = ET.SubElement(link, "inertial")
     ET.SubElement(inertial, "origin", xyz="0 0 0", rpy="0 0 0")
@@ -121,6 +149,20 @@ def main() -> None:
     mesh_dir = out_dir / "meshes"
     mesh_dir.mkdir(parents=True, exist_ok=True)
 
+    # Wheel inertia radius/length are GEOMETRY, not mass properties, so they are
+    # derived from parameters.json rather than read from mass_properties.json.
+    # They were previously duplicated there and silently went stale when the
+    # wheel grew 280 -> 430 mm: the URDF kept shipping 0.14 m wheel inertia
+    # while the joint origins moved to the new 0.215 m radius. Inertia scales
+    # with r^2, so that understated wheel rotational inertia by about 2.4x --
+    # invisible in every kinematic screen, but corrupting to any dynamic
+    # contact result. Deriving it here removes the second source of truth;
+    # _check_derived_wheel_geometry below fails loudly if the data file still
+    # disagrees, so a stale value cannot pass quietly again.
+    wheel_inertia_radius_m = g["wheel_diameter_mm"] / 2000.0
+    wheel_inertia_length_m = g["wheel_width_mm"] / 1000.0
+    _check_derived_wheel_geometry(mass_props, wheel_inertia_radius_m, wheel_inertia_length_m)
+
     link_component_counts = _export_cad_link_meshes(mesh_dir, params)
     _make_stair_mesh(mesh_dir / "reference_stairs_203r_279g.stl", g["stair_rise_reference_mm"], g["stair_going_reference_mm"])
 
@@ -131,7 +173,7 @@ def main() -> None:
         if "box_inertia_size_m" in props:
             inertia = _inertia_box(mass, *props["box_inertia_size_m"])
         else:
-            inertia = _inertia_wheel(mass, props["cylinder_inertia_radius_m"], props["cylinder_inertia_length_m"])
+            inertia = _inertia_wheel(mass, wheel_inertia_radius_m, wheel_inertia_length_m)
         _add_inertial(link, mass, inertia)
         _add_mesh(link, "visual", f"{link_name}.stl")
         _add_mesh(link, "collision", f"{link_name}.stl")

@@ -112,7 +112,42 @@ def _component_link(component: Component) -> str:
     return "chassis"
 
 
-def _export_cad_link_meshes(mesh_dir: Path, params: dict) -> dict[str, int]:
+def link_frame_origins_mm(g: dict) -> dict[str, tuple[float, float, float]]:
+    """Absolute CAD position of every URDF link frame, in millimetres.
+
+    A URDF link's mesh is drawn relative to that link's own frame, so geometry
+    exported in absolute assembly coordinates gets displaced twice: once by the
+    joint chain and again by the coordinates baked into the mesh. That is
+    exactly what was happening -- front_left_wheel's mesh spans X 140..580 (its
+    absolute position) while its link frame already sat at (360, 310, -445),
+    so the wheel rendered at roughly double the track and wheelbase, below
+    ground. Every link was wrong the same way, which is why the vehicle still
+    settled upright and only the resting-height check caught it.
+
+    These origins are read off the real CAD: the wheel frame is the wheel
+    centre, and the pod frame is seat_roll_cross_shaft, the actual pitch pivot
+    at z = 645 (the URDF previously assumed 260).
+    """
+    wb = g["wheelbase_mm"]
+    tr = g["track_mm"]
+    radius = g["wheel_diameter_mm"] / 2.0
+    origins: dict[str, tuple[float, float, float]] = {
+        "chassis": (0.0, 0.0, 0.0),
+        "occupant_pod": (0.0, 0.0, 645.0),
+    }
+    for name, sx, sy in (("front_left", 1, 1), ("front_right", 1, -1),
+                         ("rear_left", -1, 1), ("rear_right", -1, -1)):
+        x = sx * wb / 2.0
+        y = sy * tr / 2.0
+        tower_x = x - sx * 100.0
+        origins[f"{name}_slider"] = (tower_x, y, 455.0)
+        origins[f"{name}_wheel_module"] = (x, y, radius)
+        origins[f"{name}_wheel"] = (x, y, radius)
+    return origins
+
+
+def _export_cad_link_meshes(mesh_dir: Path, params: dict,
+                            origins: dict[str, tuple[float, float, float]]) -> dict[str, int]:
     groups: dict[str, list[Component]] = {}
     for component in build_components(params, include_reference=False):
         link = _component_link(component)
@@ -123,6 +158,10 @@ def _export_cad_link_meshes(mesh_dir: Path, params: dict) -> dict[str, int]:
     component_counts: dict[str, int] = {}
     for link_name, components in groups.items():
         compound = cq.Compound.makeCompound([component.shape.val() for component in components])
+        # Move the geometry into its own link frame so the joint chain is the
+        # only thing positioning it.
+        ox, oy, oz = origins[link_name]
+        compound = compound.translate((-ox, -oy, -oz))
         exporters.export(compound, str(mesh_dir / f"{link_name}.stl"), exportType="STL", tolerance=0.35, angularTolerance=0.2)
         component_counts[link_name] = len(components)
     return component_counts
@@ -163,7 +202,8 @@ def main() -> None:
     wheel_inertia_length_m = g["wheel_width_mm"] / 1000.0
     _check_derived_wheel_geometry(mass_props, wheel_inertia_radius_m, wheel_inertia_length_m)
 
-    link_component_counts = _export_cad_link_meshes(mesh_dir, params)
+    origins_mm = link_frame_origins_mm(g)
+    link_component_counts = _export_cad_link_meshes(mesh_dir, params, origins_mm)
     _make_stair_mesh(mesh_dir / "reference_stairs_203r_279g.stl", g["stair_rise_reference_mm"], g["stair_going_reference_mm"])
 
     robot = ET.Element("robot", name="terrain_elevate_p1_v059")
@@ -192,21 +232,24 @@ def main() -> None:
     actuator_velocity_m_s = actuator["motor_nominal_speed_rpm_SRC"] / gear_ratio * screw_lead_m / 60
     wheel_effort_nm = 60.0
 
-    _joint(robot, "pod_pitch_leveling_joint", "revolute", "chassis", "occupant_pod", (0, 0, 0.26), (0, 1, 0), {"lower": -pitch_limit, "upper": pitch_limit, "effort": 2000, "velocity": 0.35})
+    # Joint origins are DIFFERENCES between link frames, derived from the same
+    # table the meshes are translated by, so the kinematic chain and the
+    # geometry can no longer disagree. They were previously hand-picked
+    # offsets that did not correspond to the CAD at all -- the pod pitch axis
+    # was at 260 mm when the real roll shaft it pivots on sits at 645.
+    def _delta_m(child: str, parent: str) -> tuple[float, float, float]:
+        c, p = origins_mm[child], origins_mm[parent]
+        return ((c[0] - p[0]) / 1000.0, (c[1] - p[1]) / 1000.0, (c[2] - p[2]) / 1000.0)
 
-    corners = {
-        "front_left": (wheelbase_m / 2, track_m / 2),
-        "front_right": (wheelbase_m / 2, -track_m / 2),
-        "rear_left": (-wheelbase_m / 2, track_m / 2),
-        "rear_right": (-wheelbase_m / 2, -track_m / 2),
-    }
-    for name, (x, y) in corners.items():
+    _joint(robot, "pod_pitch_leveling_joint", "revolute", "chassis", "occupant_pod", _delta_m("occupant_pod", "chassis"), (0, 1, 0), {"lower": -pitch_limit, "upper": pitch_limit, "effort": 2000, "velocity": 0.35})
+
+    for name in ("front_left", "front_right", "rear_left", "rear_right"):
         slider = f"{name}_slider"
         module = f"{name}_wheel_module"
         wheel = f"{name}_wheel"
-        _joint(robot, f"{name}_corner_prismatic_actuator", "prismatic", "chassis", slider, (x, y, 0), (0, 0, 1), {"lower": 0, "upper": stroke_m, "effort": actuator_effort_n, "velocity": actuator_velocity_m_s})
-        _joint(robot, f"{name}_fork_carrier_fixed", "fixed", slider, module, (0, 0, -0.23), (0, 0, 1))
-        _joint(robot, f"{name}_wheel_drive_joint", "continuous", module, wheel, (0, 0, -radius_m), (0, 1, 0), {"effort": wheel_effort_nm, "velocity": 35.0})
+        _joint(robot, f"{name}_corner_prismatic_actuator", "prismatic", "chassis", slider, _delta_m(slider, "chassis"), (0, 0, 1), {"lower": 0, "upper": stroke_m, "effort": actuator_effort_n, "velocity": actuator_velocity_m_s})
+        _joint(robot, f"{name}_fork_carrier_fixed", "fixed", slider, module, _delta_m(module, slider), (0, 0, 1))
+        _joint(robot, f"{name}_wheel_drive_joint", "continuous", module, wheel, _delta_m(wheel, module), (0, 1, 0), {"effort": wheel_effort_nm, "velocity": 35.0})
 
     tree = ET.ElementTree(robot)
     ET.indent(tree, space="  ")

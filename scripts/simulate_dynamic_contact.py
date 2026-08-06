@@ -148,13 +148,16 @@ def main() -> None:
         physicsClientId=client,
     )
 
-    # Spawn clear of the stairs and above the ground: the chassis origin sits a
-    # slider drop plus a wheel radius above the contact patch, derived here
-    # rather than hardcoded so it tracks the wheel-diameter parameter.
+    # Spawn clear of the stairs, then MEASURE the ride height from the loaded
+    # geometry rather than computing it from a formula. The previous formula
+    # (0.23 + wheel radius) was inherited from a URDF whose link meshes carried
+    # absolute assembly coordinates while the joint chain had already
+    # positioned them, so every link was displaced twice. Deriving the drop
+    # from the model's own bounding boxes means this check cannot quietly
+    # encode the same assumption twice and agree with itself.
     wheel_radius_m = g["wheel_diameter_mm"] / 2000.0
-    chassis_above_ground_m = 0.23 + wheel_radius_m
-    spawn_z = ground_level_m + chassis_above_ground_m + 0.02  # small drop to settle
     spawn_x = -1.2  # behind the first riser, on the approach floor added above
+    spawn_z = ground_level_m + 2.0 * wheel_radius_m + 0.10  # provisional, clear of ground
 
     robot = p.loadURDF(
         str(urdf_path),
@@ -202,6 +205,19 @@ def main() -> None:
                 physicsClientId=client,
             )
 
+    # Measure how far the lowest tire point sits below the base origin at the
+    # zero pose, then drop the vehicle from just above its true resting height.
+    lowest_z = None
+    for i in wheel_link_indices:
+        aabb_min, _ = p.getAABB(robot, i, physicsClientId=client)
+        lowest_z = aabb_min[2] if lowest_z is None else min(lowest_z, aabb_min[2])
+    base_to_lowest_m = spawn_z - lowest_z if lowest_z is not None else 2 * wheel_radius_m
+    expected_height_m = ground_level_m + base_to_lowest_m
+    p.resetBasePositionAndOrientation(
+        robot, [spawn_x, 0, expected_height_m + 0.02], [0, 0, 0, 1],
+        physicsClientId=client,
+    )
+
     settle_time_s = 2.0
     steps = int(settle_time_s / timestep_s)
     heights: list[float] = []
@@ -234,7 +250,6 @@ def main() -> None:
     )
     upright = abs(math.degrees(euler[1])) < 10.0 and abs(math.degrees(euler[0])) < 10.0
     resting_height_m = final_pos[2]
-    expected_height_m = ground_level_m + chassis_above_ground_m
     height_error_mm = (resting_height_m - expected_height_m) * 1000.0
 
     checks = {
